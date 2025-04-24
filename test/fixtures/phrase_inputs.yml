@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  phrase_inputable_type: MyString
+  phrase_inputable_id: 1
+  code: MyString
+  position: 1
+  phrase_id: 1
+
+two:
+  phrase_inputable_type: MyString
+  phrase_inputable_id: 1
+  code: MyString
+  position: 1
+  phrase_id: 1

@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  phrase: one
+  text: MyString
+  node_type: MyString
+  features: 
+
+two:
+  phrase: two
+  text: MyString
+  node_type: MyString
+  features: 

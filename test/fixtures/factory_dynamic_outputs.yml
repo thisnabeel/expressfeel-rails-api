@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  slug: MyString
+  factory_dynamic_input: one
+  initial_input_key: MyString
+  position: 1
+
+two:
+  slug: MyString
+  factory_dynamic_input: two
+  initial_input_key: MyString
+  position: 1

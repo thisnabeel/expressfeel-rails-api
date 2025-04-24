@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  phrase_input: one
+  phrase_payload_id: 1
+  factory_dynamic_input_id: 1
+
+two:
+  phrase_input: two
+  phrase_payload_id: 1
+  factory_dynamic_input_id: 1

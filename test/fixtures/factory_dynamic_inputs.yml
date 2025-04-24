@@ -1,0 +1,15 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  slug: MyString
+  factory: one
+  position: 1
+  selected_rule: MyString
+  factory_dynamic: one
+
+two:
+  slug: MyString
+  factory: two
+  position: 1
+  selected_rule: MyString
+  factory_dynamic: two

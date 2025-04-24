@@ -1,0 +1,13 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  factory_material: one
+  slug: MyString
+  active: false
+  category: MyString
+
+two:
+  factory_material: two
+  slug: MyString
+  active: false
+  category: MyString
