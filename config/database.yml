@@ -91,7 +91,11 @@ test:
 #     url: <%= ENV['DATABASE_URL'] %>
 #
 production:
-  <<: *default
-  database: new_tpi_production
-  username: new_tpi
-  password: <%= ENV['THEPARAGRAPHISLANDS_DATABASE_PASSWORD'] %>
+  adapter: postgresql
+  encoding: unicode
+  host: <%= ENV['PGHOST'] %>
+  port: <%= ENV['PGPORT'] %>
+  database: <%= ENV['PGDATABASE'] %>
+  username: <%= ENV['PGUSER'] %>
+  password: <%= ENV['PGPASSWORD'] %>
+  pool: 5
