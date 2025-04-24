@@ -21,7 +21,8 @@ class LanguageNounsController < ApplicationController
   # GET /language_nouns/1/edit
   def edit
     @language = Language.find(params[:id])
-
+  end
+  
   def quiz
     render json: Language.find(params[:id]).language_nouns.sample.blocks_quiz
   end

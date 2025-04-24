@@ -40,8 +40,6 @@ class LessonKeysController < ApplicationController
 
   def create
     @lesson_key = LessonKey.new(lesson_key_params)
-
-    end
   end
 
 

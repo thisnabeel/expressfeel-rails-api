@@ -21,7 +21,7 @@ class NounRulesController < ApplicationController
   # GET /noun_rules/1/edit
   def edit
     @language = Language.find(params[:id])
-    end  end
+  end
 
   # POST /noun_rules
   # POST /noun_rules.json

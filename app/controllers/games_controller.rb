@@ -56,6 +56,7 @@ class GamesController < ApplicationController
   def destroy
     @game = Game.find(params[:id])
     @game.destroy
+  end
   # 
   def find_verbs
 

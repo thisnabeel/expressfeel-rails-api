@@ -38,7 +38,7 @@ class VideosController < ApplicationController
   # DELETE /videos/1.json
   def destroy
     @video.destroy
-    render json: { head :no_content }
+    render json: { head: :no_content }
   end
 
   def search
