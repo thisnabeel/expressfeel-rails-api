@@ -13,16 +13,6 @@ class ConjugationRulesController < ApplicationController
     render json: Language.find(params[:id]).conjugation_rules
   end
 
-  # GET /conjugation_rules/new
-  def new
-    @conjugation_rule = ConjugationRule.new
-  end
-
-  # GET /conjugation_rules/1/edit
-  def edit
-    @language = Language.find(params[:id])
-    end
-  end
 
   # POST /conjugation_rules
   # POST /conjugation_rules.json
