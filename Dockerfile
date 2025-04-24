@@ -16,26 +16,24 @@ ENV RAILS_ENV="production" \
 
 FROM base as build
 
-# Install packages needed to build gems
 RUN apt-get update -qq && \
     apt-get install --no-install-recommends -y \
-    curl \
-    libsqlite3-0 \
+    build-essential \
+    git \
     libvips \
-    libpq5 && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+    pkg-config \
+    libpq-dev \
+    libncurses5-dev
 
-# Install application gems
 COPY Gemfile Gemfile.lock ./
 RUN bundle install && \
     rm -rf ~/.bundle/ "${BUNDLE_PATH}"/ruby/*/cache "${BUNDLE_PATH}"/ruby/*/bundler/gems/*/.git && \
     bundle exec bootsnap precompile --gemfile
 
-# Copy application code
 COPY . .
 
-# Precompile bootsnap code for faster boot times
 RUN bundle exec bootsnap precompile app/ lib/
+
 
 
 
