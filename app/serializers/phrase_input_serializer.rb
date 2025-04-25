@@ -13,9 +13,21 @@ class PhraseInputSerializer < ActiveModel::Serializer
     end
   end
 
-  def english_outputs
-    if object.phrase_inputable_type === "Factory"
-      object.phrase_inputable.materialable_type.constantize.column_names - ['id', 'created_at', 'updated_at']
+  def english_outputs(input = object, depth = 0, max_depth = 5)
+    return {} if depth > max_depth
+
+    case input.phrase_inputable_type
+    when "Factory"
+      {
+        input.code => input.phrase_inputable.materialable_type.constantize
+                            .column_names - %w[id created_at updated_at]
+      }
+    when "Phrase"
+      input.phrase_inputable.phrase_inputs.each_with_object({}) do |pi, result|
+        result.merge!(english_outputs(pi, depth + 1, max_depth))
+      end
+    else
+      {}
     end
   end
 

@@ -434,25 +434,18 @@ class Phrase < ActiveRecord::Base
 		category_output = {}
 		factories = self.phrase_factories.includes(factory: [:factory_materials]) 
 
-		exports = factories.each_with_object({}) do |pf, hash|
-			material = pf.factory.factory_materials.sample
-			hash[pf.code] = {
-				material: material,
-				english: material.materialable,
-				id: pf.id
-			}
-		end
-		
 		# phrase_inputs
 		phrase_inputs = self.phrase_inputs.order("created_at")
 		phrase_items = {}
 		phrase_inputs.each do |pi|
 			if pi.phrase_inputable_type === "Factory"
 				material = pi.phrase_inputable.factory_materials.sample
-				phrase_items[pi.code] = {
+				hash = {
 					language_material: material,
 					english_material: material.materialable
 				}
+				exports[pi.code] = hash
+				phrase_items[pi.code] = hash
 			end
 
 			if pi.phrase_inputable_type === "FactoryDynamic"
@@ -471,14 +464,23 @@ class Phrase < ActiveRecord::Base
 
 			if pi.phrase_inputable_type === "Phrase"
 				input_phrase = pi.phrase_inputable
-				phrase_items[pi.code] = {
-					input_materials: input_materials, 
-					built: input_phrase.build
-				}
-			end
-		end
+				built = input_phrase.build
 
-		# binding.pry
+				# Merge nested exports into current exports
+				if built[:exports]
+					exports.merge!(built[:exports]) { |key, oldval, newval| oldval } # Prefer outer values if duplicate
+				end
+
+				phrase_items[pi.code] = {
+					input_materials: input_materials,
+					built: built
+				}
+
+				# Also register the nested phrase as its own export if needed
+				exports[pi.code] = phrase_items[pi.code]
+			end
+
+		end
 
 		# Must process original first
 		[:original, :roman, :english].each do |category|

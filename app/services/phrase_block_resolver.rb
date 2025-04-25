@@ -52,9 +52,19 @@ class PhraseBlockResolver
       output_key = @block["output_key"]
 
       if !@block["output_key"].present?
-        return @exports[code][:built][@category]
+        if  @category.to_s === "english"
+          if @block["english_material_code"] && @block["english_material_attribute"]
+            
+            return @exports[code][:built][:exports][@block["english_material_code"]][:english_material][@block["english_material_attribute"]]
+          else
+            return @exports[code][:built][@category]
+          end
+        else
+          return @exports[code][:built][@category]
+        end
       end
       category_output_key = @block["output_key"] + "_#{@category}"
+
 
       details = @exports[code]
       if details[:built]
