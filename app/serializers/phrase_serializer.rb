@@ -2,8 +2,9 @@ class PhraseSerializer < ActiveModel::Serializer
   attributes :id, :title, :body, :recording, :tags, :position, :language_id, :lesson_id, :created_at, :updated_at, :translit, :formula, :ready, :phrase_factories
   has_one :lesson
   attribute :language
-  attribute :phrase_inputs
-  attribute :inputtable_items
+  attribute :phrase_factories, unless: -> { @instance_options[:just_phrase] == true }
+  attribute :phrase_inputs, unless: -> { @instance_options[:just_phrase] == true }
+  attribute :inputtable_items, unless: -> { @instance_options[:just_phrase] == true }
   attribute :phrase_dynamics, unless: -> { @instance_options[:just_phrase] == true }
 
 
