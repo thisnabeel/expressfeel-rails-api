@@ -5,6 +5,7 @@ class NounsController < ApplicationController
   # GET /nouns.json
   def index
     @nouns = Noun.all.order("base ASC")
+    render json: @nouns
   end
 
   def build
@@ -35,12 +36,21 @@ class NounsController < ApplicationController
   # POST /nouns.json
   def create
     @noun = Noun.new(noun_params)
+    if @noun.save
+      render json: @noun
+    else
+      render json: @noun.errors, status: :unprocessable_entity
+    end
   end
 
   # PATCH/PUT /nouns/1
   # PATCH/PUT /nouns/1.json
   def update
-
+    if @noun.update(noun_params)
+      render json: @noun
+    else
+      render json: @noun.errors, status: :unprocessable_entity
+    end
   end
 
   # DELETE /nouns/1

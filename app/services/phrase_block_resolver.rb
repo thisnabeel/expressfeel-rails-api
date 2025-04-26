@@ -56,6 +56,8 @@ class PhraseBlockResolver
           if @block["english_material_code"] && @block["english_material_attribute"]
             
             return @exports[code][:built][:exports][@block["english_material_code"]][:english_material][@block["english_material_attribute"]]
+          elsif !@block["english_material_code"] && @block["english_material_attribute"]
+            return @exports[code][:english_material][@block["english_material_attribute"]]
           else
             return @exports[code][:built][@category]
           end

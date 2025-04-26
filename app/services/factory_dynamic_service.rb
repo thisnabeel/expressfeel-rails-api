@@ -18,13 +18,14 @@ class FactoryDynamicService
       node.each { |step| apply_morph(step, context) }
       return @outputs
     end
-
     # return interpolate(node["value"], context) if node["value"]
     return "" if node["error"]
 
     if node["if"]
       condition = node["if"]["condition"] || "true"
-      if evaluate_condition(condition, context)
+      conditions = Array(condition)
+      condition_passing = !conditions.map {|c| evaluate_condition(c, context)}.include?(false)
+      if condition_passing
         return walk_tree(node["if"]["then"], context)
       elsif node["if"]["else"]
         return walk_tree(node["if"]["else"], context)
@@ -35,7 +36,9 @@ class FactoryDynamicService
       node["sequence"].each do |morph_step|
         if morph_step["if"]
           condition = morph_step["if"]["condition"] || "true"
-          if evaluate_condition(condition, context)
+          conditions = Array(condition)
+          condition_passing = !conditions.map {|c| evaluate_condition(c, context)}.include?(false)
+          if condition_passing
             run_morph_chain(morph_step["if"]["then"], context)
           elsif morph_step["if"]["else"]
             run_morph_chain(morph_step["if"]["else"], context)
@@ -61,7 +64,10 @@ class FactoryDynamicService
       steps.each do |s|
         puts "[DEBUG] Running morph step: #{s.inspect}"
         key = s.keys.first
+        puts "-- first key is #{key}"
         if key == "sequence"
+          walk_tree(s, context)
+        elsif key == "if"
           walk_tree(s, context)
         else
           apply_morph(s, context)
@@ -181,7 +187,7 @@ class FactoryDynamicService
       begin
         material_details = @funnels[material_key]["factory_material"]["factory_material_details".to_sym]
       rescue => e
-        binding.pry
+        # binding.pry
         material_details = {}
       end
       

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_04_22_050821) do
+ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -416,6 +416,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_22_050821) do
     t.string "tags"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+    t.boolean "proper", default: false
+    t.integer "quantity", default: 1
   end
 
   create_table "passport_phrases", id: :serial, force: :cascade do |t|
