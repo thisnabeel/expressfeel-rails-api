@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  phrase_input: one
+  material_tag_option: one
+  permit: false
+
+two:
+  phrase_input: two
+  material_tag_option: two
+  permit: false

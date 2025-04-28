@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
+ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -389,6 +389,24 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
+  create_table "material_tag_options", force: :cascade do |t|
+    t.bigint "language_id", null: false
+    t.string "title"
+    t.integer "position"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_id"], name: "index_material_tag_options_on_language_id"
+  end
+
+  create_table "material_tags", force: :cascade do |t|
+    t.bigint "material_tag_option_id", null: false
+    t.bigint "factory_material_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["factory_material_id"], name: "index_material_tags_on_factory_material_id"
+    t.index ["material_tag_option_id"], name: "index_material_tags_on_material_tag_option_id"
+  end
+
   create_table "missions", id: :serial, force: :cascade do |t|
     t.integer "phrase_id"
     t.text "body"
@@ -461,6 +479,16 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
     t.index ["phrase_input_id"], name: "index_phrase_input_payloads_on_phrase_input_id"
   end
 
+  create_table "phrase_input_permits", force: :cascade do |t|
+    t.bigint "phrase_input_id", null: false
+    t.bigint "material_tag_option_id", null: false
+    t.boolean "permit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["material_tag_option_id"], name: "index_phrase_input_permits_on_material_tag_option_id"
+    t.index ["phrase_input_id"], name: "index_phrase_input_permits_on_phrase_input_id"
+  end
+
   create_table "phrase_inputs", force: :cascade do |t|
     t.string "phrase_inputable_type"
     t.integer "phrase_inputable_id"
@@ -469,6 +497,16 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
     t.integer "phrase_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "phrase_inputs_permits", force: :cascade do |t|
+    t.bigint "phrase_input_id", null: false
+    t.bigint "material_tag_option_id", null: false
+    t.boolean "permit"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["material_tag_option_id"], name: "index_phrase_inputs_permits_on_material_tag_option_id"
+    t.index ["phrase_input_id"], name: "index_phrase_inputs_permits_on_phrase_input_id"
   end
 
   create_table "phrases", id: :serial, force: :cascade do |t|
@@ -632,10 +670,17 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_26_023211) do
   add_foreign_key "factory_material_details", "factory_materials"
   add_foreign_key "language_traits", "languages"
   add_foreign_key "language_traits", "universals"
+  add_foreign_key "material_tag_options", "languages"
+  add_foreign_key "material_tags", "factory_materials"
+  add_foreign_key "material_tags", "material_tag_options"
   add_foreign_key "phrase_dynamics", "factory_dynamics"
   add_foreign_key "phrase_dynamics", "phrases"
   add_foreign_key "phrase_factories", "factories"
   add_foreign_key "phrase_factories", "phrases"
   add_foreign_key "phrase_input_payloads", "phrase_inputs"
+  add_foreign_key "phrase_input_permits", "material_tag_options"
+  add_foreign_key "phrase_input_permits", "phrase_inputs"
+  add_foreign_key "phrase_inputs_permits", "material_tag_options"
+  add_foreign_key "phrase_inputs_permits", "phrase_inputs"
   add_foreign_key "traits", "universals"
 end

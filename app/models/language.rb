@@ -2,6 +2,8 @@ class Language < ActiveRecord::Base
 	has_many :language_traits, dependent: :destroy
 	has_many :lesson_keys
 
+	has_many :material_tag_options
+
 	has_many :factories, dependent: :destroy
 	has_many :factory_dynamics, through: :factories
 

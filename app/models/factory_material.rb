@@ -2,6 +2,7 @@ class FactoryMaterial < ActiveRecord::Base
     belongs_to :factory
     belongs_to :materialable, polymorphic: true, optional: true
     has_many :factory_material_details
+    has_many :material_tags
 
     def dynamics
         factory = self.factory

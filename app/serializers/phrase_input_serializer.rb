@@ -1,5 +1,10 @@
 class PhraseInputSerializer < ActiveModel::Serializer
-  attributes :id, :phrase_inputable_type, :phrase_inputable_id, :code, :position, :phrase_id, :phrase_inputable, :outputs, :inputs, :english_outputs
+  attributes :id, :phrase_inputable_type, :phrase_inputable_id, :code, :position, :phrase_id, :phrase_inputable, :outputs, :inputs, :english_outputs, :phrase_input_permits
+
+
+  def phrase_input_permits
+    object.phrase_input_permits.map {|p| PhraseInputPermitSerializer.new(p)}
+  end
 
   def phrase_inputable
     object.phrase_inputable

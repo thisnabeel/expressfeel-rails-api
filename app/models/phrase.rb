@@ -439,7 +439,23 @@ class Phrase < ActiveRecord::Base
 		phrase_items = {}
 		phrase_inputs.each do |pi|
 			if pi.phrase_inputable_type === "Factory"
-				material = pi.phrase_inputable.factory_materials.sample
+
+				materials = nil
+				
+				if pi.phrase_input_permits.present?
+					permit_ids = pi.phrase_input_permits.where(permit: true).pluck(:material_tag_option_id)
+	
+					# Step 2: Filter factory_materials
+					materials = pi.phrase_inputable.factory_materials.joins(:material_tags)
+						.where(material_tags: { material_tag_option_id: permit_ids })
+						.distinct
+
+					# binding.pry
+				else
+					materials = pi.phrase_inputable.factory_materials
+				end
+
+				material = materials.sample
 				hash = {
 					language_material: material,
 					english_material: material.materialable
@@ -507,6 +523,7 @@ class Phrase < ActiveRecord::Base
 	end
 
 	def build_category_output(blocks, catalog, language_id, material_selections, category, exports, factories)
+		return "" unless blocks.present?
 		blocks.map do |block|
 			padding_left = block["padding_left"] ? " " : ""
 			padding_right = block["padding_right"] ? " " : ""

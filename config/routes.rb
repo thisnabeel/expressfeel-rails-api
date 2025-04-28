@@ -1,4 +1,13 @@
 Rails.application.routes.draw do
+  resources :phrase_input_permits
+  resources :material_tags
+  resources :material_tag_options do
+    collection do
+      get :search
+    end
+  end
+  resources :material_categories
+  resources :material_category_options
   resources :phrase_input_payloads
   resources :phrase_inputs
   resources :factory_dynamic_outputs
@@ -49,7 +58,12 @@ Rails.application.routes.draw do
   # See how all your routes lay out with "rake routes".
 
   # You can have the root of your site routed with "root"
-  resources :lessons
+  resources :lessons do
+    collection do
+      post :reorder
+    end
+  end
+
   resources :lesson_keys
 
   devise_for :users, controllers: {
@@ -72,6 +86,9 @@ Rails.application.routes.draw do
   get "/conjugations/sample" => "conjugations#sample"
   
   resources :conjugations
+
+  get '/languages/:id/material_tag_options' => "languages#material_tag_options"
+  
   
   post "/factory_dynamics/build" => "factory_dynamics#build"
   get "languages/:id/factory_dynamics" => "factory_dynamics#by_language"

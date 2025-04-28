@@ -139,8 +139,6 @@ class BlocksQuiz < ApplicationRecord
             return string.split(" ")
                 .map{|block| 
                     block
-                        .gsub("?", "")
-                        .gsub("؟", "")
                 }
         end
 

@@ -25,6 +25,11 @@ class PhrasesController < ApplicationController
   # POST /phrases.json
   def create
     @phrase = Phrase.new(phrase_params)
+    if @phrase.save
+      render json: @phrase, serializer: PhraseSerializer
+    else
+      render json: @phrase.errors, status: :unprocessable_entity
+    end
   end
 
   # PATCH/PUT /phrases/1

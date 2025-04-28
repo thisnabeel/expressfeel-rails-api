@@ -4,8 +4,17 @@ class LessonsController < ApplicationController
   # GET /lessons
   # GET /lessons.json
   def index
-    render json: Lesson.all
+    render json: Lesson.all.order("position ASC")
   end
+
+  # POST /lessons/reorder
+  def reorder
+    params[:ids].each_with_index do |id, index|
+      Lesson.where(id: id).update_all(position: index)
+    end
+    render json: { success: true }
+  end
+
 
   def search_catalog
     render json: Lesson.where('objective LIKE ?', "%#{params[:search]}%")
