@@ -8,6 +8,8 @@ class Phrase < ActiveRecord::Base
 	has_many :phrase_factories, dependent: :destroy
 
 	has_many :phrase_inputs, dependent: :destroy
+	has_many :phrase_input_payloads, as: :payloadable
+	has_many :phrase_orderings
 
 
 	# Phrase.all.each do |phrase|
@@ -47,6 +49,7 @@ class Phrase < ActiveRecord::Base
 
 	def siblings
 		language_id = self.language_id
+		# binding.pry
 		mainEnglish = self.formula["english"].map{|o| o["uuid"] = 0; o}
 
 		array = []
@@ -425,7 +428,7 @@ class Phrase < ActiveRecord::Base
 
 	# 
 
-	def build
+	def build(payload={})
 		language = self.language
 		phrase_dynamics = self.phrase_dynamics.order("position ASC")
 		catalog = build_catalog(language, phrase_dynamics)
@@ -440,26 +443,30 @@ class Phrase < ActiveRecord::Base
 		phrase_inputs.each do |pi|
 			if pi.phrase_inputable_type === "Factory"
 
-				materials = nil
-				
-				if pi.phrase_input_permits.present?
-					permit_ids = pi.phrase_input_permits.where(permit: true).pluck(:material_tag_option_id)
-	
-					# Step 2: Filter factory_materials
-					materials = pi.phrase_inputable.factory_materials.joins(:material_tags)
-						.where(material_tags: { material_tag_option_id: permit_ids })
-						.distinct
-
-					# binding.pry
+				if payload[pi.code]
+					hash = payload[pi.code]
 				else
-					materials = pi.phrase_inputable.factory_materials
-				end
+					materials = nil
+					
+					if pi.phrase_input_permits.present?
+						permit_ids = pi.phrase_input_permits.where(permit: true).pluck(:material_tag_option_id)
+		
+						# Step 2: Filter factory_materials
+						materials = pi.phrase_inputable.factory_materials.joins(:material_tags)
+							.where(material_tags: { material_tag_option_id: permit_ids })
+							.distinct
 
-				material = materials.sample
-				hash = {
-					language_material: material,
-					english_material: material.materialable
-				}
+						# binding.pry
+					else
+						materials = pi.phrase_inputable.factory_materials
+					end
+
+					material = materials.sample
+					hash = {
+						language_material: material,
+						english_material: material.materialable
+					}
+				end
 				exports[pi.code] = hash
 				phrase_items[pi.code] = hash
 			end
@@ -480,7 +487,9 @@ class Phrase < ActiveRecord::Base
 
 			if pi.phrase_inputable_type === "Phrase"
 				input_phrase = pi.phrase_inputable
-				built = input_phrase.build
+				# pi.phrase_input_payloads.map {|pip| phrase_items[pip.payloadable.code]}
+				payload = pi.phrase_input_payloads.map { |pip| [pip.payloadable.code, phrase_items[pip.payloadable.code]] }.to_h
+				built = input_phrase.build(payload)
 
 				# Merge nested exports into current exports
 				if built[:exports]

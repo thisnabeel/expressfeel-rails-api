@@ -48,6 +48,6 @@ class PhraseInputPayloadsController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def phrase_input_payload_params
-      params.require(:phrase_input_payload).permit(:phrase_input_id, :phrase_payload_id, :factory_dynamic_input_id)
+      params.require(:phrase_input_payload).permit(:phrase_input_id, :phrase_payload_id, :payloadable_type, :payloadable_id)
     end
 end

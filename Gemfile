@@ -60,6 +60,7 @@ gem 'nokogiri'
 
 gem 'words_counted'
 
+gem 'aws-sdk', "3.1.0"
 
 gem 'pry-byebug'
 

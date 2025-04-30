@@ -1,0 +1,19 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  title: MyString
+  description: MyText
+  position: 1
+  quest: one
+  image_url: MyString
+  language: one
+  difficulty: 1
+
+two:
+  title: MyString
+  description: MyText
+  position: 1
+  quest: two
+  image_url: MyString
+  language: two
+  difficulty: 1

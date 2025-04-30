@@ -39,6 +39,8 @@ class PhraseInputSerializer < ActiveModel::Serializer
   def inputs
     if object.phrase_inputable_type === "FactoryDynamic"
       return object.phrase_inputable.factory_dynamic_inputs.map {|fdi| fdi.attributes.merge(payload: PhraseInputPayload.find_by(phrase_input_id: object.id, factory_dynamic_input_id: fdi.id))}
+    elsif object.phrase_inputable_type === "Phrase"
+      return object.phrase_inputable.phrase_inputs.map {|pi| pi.attributes.merge(payload: PhraseInputPayload.find_by(phrase_input_id: object.id, factory_dynamic_input_id: pi.id))}
     else
       return []
     end

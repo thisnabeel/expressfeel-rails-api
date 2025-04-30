@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
+ActiveRecord::Schema[7.1].define(version: 2025_04_29_212203) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -476,6 +476,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
     t.integer "factory_dynamic_input_id"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "payloadable_type"
+    t.integer "payloadable_id"
+    t.index ["payloadable_type", "payloadable_id"], name: "idx_on_payloadable_type_payloadable_id_970fa25673"
     t.index ["phrase_input_id"], name: "index_phrase_input_payloads_on_phrase_input_id"
   end
 
@@ -507,6 +510,17 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
     t.datetime "updated_at", null: false
     t.index ["material_tag_option_id"], name: "index_phrase_inputs_permits_on_material_tag_option_id"
     t.index ["phrase_input_id"], name: "index_phrase_inputs_permits_on_phrase_input_id"
+  end
+
+  create_table "phrase_orderings", force: :cascade do |t|
+    t.jsonb "line", default: []
+    t.text "description"
+    t.integer "position"
+    t.bigint "phrase_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.string "category"
+    t.index ["phrase_id"], name: "index_phrase_orderings_on_phrase_id"
   end
 
   create_table "phrases", id: :serial, force: :cascade do |t|
@@ -565,6 +579,32 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
     t.string "object_word"
     t.string "is_word"
     t.string "do_word"
+  end
+
+  create_table "quest_steps", force: :cascade do |t|
+    t.string "image_url"
+    t.string "thumbnail_url"
+    t.bigint "quest_id", null: false
+    t.integer "position"
+    t.text "body"
+    t.integer "success_step_id"
+    t.integer "failure_step_id"
+    t.integer "quest_reward_id"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quest_id"], name: "index_quest_steps_on_quest_id"
+  end
+
+  create_table "quests", force: :cascade do |t|
+    t.string "title"
+    t.text "description"
+    t.integer "position"
+    t.bigint "quest_id"
+    t.string "image_url"
+    t.integer "difficulty"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["quest_id"], name: "index_quests_on_quest_id"
   end
 
   create_table "reactions", id: :serial, force: :cascade do |t|
@@ -682,5 +722,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_28_022451) do
   add_foreign_key "phrase_input_permits", "phrase_inputs"
   add_foreign_key "phrase_inputs_permits", "material_tag_options"
   add_foreign_key "phrase_inputs_permits", "phrase_inputs"
+  add_foreign_key "phrase_orderings", "phrases"
+  add_foreign_key "quest_steps", "quests"
+  add_foreign_key "quests", "quests"
   add_foreign_key "traits", "universals"
 end

@@ -14,7 +14,7 @@ class PhraseInputsController < ApplicationController
 
   def save_payload
     payload = @phrase_input.phrase_input_payloads.find_or_create_by(phrase_input_id: params[:phrase_input_id], factory_dynamic_input_id: params[:factory_dynamic_input_id])
-    payload.update(phrase_input_payload_params)
+    payload.update!(phrase_input_payload_params)
     render json: payload
   end
 
@@ -58,6 +58,6 @@ class PhraseInputsController < ApplicationController
     end
 
     def phrase_input_payload_params
-      params.require(:phrase_input_payload).permit(:phrase_input_id, :phrase_payload_id, :factory_dynamic_input_id)
+      params.require(:phrase_input_payload).permit(:phrase_input_id, :phrase_payload_id, :payloadable_type, :payloadable_id)
     end
 end

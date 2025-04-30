@@ -6,6 +6,7 @@ class PhraseSerializer < ActiveModel::Serializer
   attribute :phrase_inputs, unless: -> { @instance_options[:just_phrase] == true }
   attribute :inputtable_items, unless: -> { @instance_options[:just_phrase] == true }
   attribute :phrase_dynamics, unless: -> { @instance_options[:just_phrase] == true }
+  attribute :phrase_orderings, unless: -> { @instance_options[:just_phrase] == true }
 
 
   def phrase_inputs
