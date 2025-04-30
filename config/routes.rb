@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :quest_step_lessons
 
   resources :phrase_orderings
   resources :phrase_input_permits
@@ -58,7 +59,11 @@ Rails.application.routes.draw do
 
   # config/routes.rb
   resources :quests do
-    resources :quest_steps
+    resources :quest_steps do
+      member do
+        post :upload_image
+      end
+    end
   end
 
 

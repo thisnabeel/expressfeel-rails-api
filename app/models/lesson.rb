@@ -5,6 +5,9 @@ class Lesson < ActiveRecord::Base
 	has_many :phrases
 	has_many :missions, :through => :phrases
 
+	has_many :quest_step_lessons
+	has_many :quest_steps, through: :quest_step_lessons
+	
 	def filled(id)
 		if self.lesson_keys.find_by_language_id(id).present? && self.lesson_keys.find_by_language_id(id).body != "<p></br></p>"
 			return true

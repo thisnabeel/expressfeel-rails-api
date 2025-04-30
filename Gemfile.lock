@@ -1926,6 +1926,7 @@ DEPENDENCIES
   image_processing (~> 1.2)
   jbuilder
   kredis
+  marcel
   net-ssh
   nokogiri
   pg

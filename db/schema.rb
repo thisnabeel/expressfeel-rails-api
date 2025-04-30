@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_04_29_212203) do
+ActiveRecord::Schema[7.1].define(version: 2025_04_30_223422) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -523,6 +523,14 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_29_212203) do
     t.index ["phrase_id"], name: "index_phrase_orderings_on_phrase_id"
   end
 
+  create_table "phrase_word_banks", force: :cascade do |t|
+    t.bigint "phrase_id", null: false
+    t.jsonb "words", default: []
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["phrase_id"], name: "index_phrase_word_banks_on_phrase_id"
+  end
+
   create_table "phrases", id: :serial, force: :cascade do |t|
     t.string "title"
     t.text "body", default: ""
@@ -579,6 +587,15 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_29_212203) do
     t.string "object_word"
     t.string "is_word"
     t.string "do_word"
+  end
+
+  create_table "quest_step_lessons", force: :cascade do |t|
+    t.bigint "lesson_id", null: false
+    t.bigint "quest_step_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["lesson_id"], name: "index_quest_step_lessons_on_lesson_id"
+    t.index ["quest_step_id"], name: "index_quest_step_lessons_on_quest_step_id"
   end
 
   create_table "quest_steps", force: :cascade do |t|
@@ -723,6 +740,9 @@ ActiveRecord::Schema[7.1].define(version: 2025_04_29_212203) do
   add_foreign_key "phrase_inputs_permits", "material_tag_options"
   add_foreign_key "phrase_inputs_permits", "phrase_inputs"
   add_foreign_key "phrase_orderings", "phrases"
+  add_foreign_key "phrase_word_banks", "phrases"
+  add_foreign_key "quest_step_lessons", "lessons"
+  add_foreign_key "quest_step_lessons", "quest_steps"
   add_foreign_key "quest_steps", "quests"
   add_foreign_key "quests", "quests"
   add_foreign_key "traits", "universals"

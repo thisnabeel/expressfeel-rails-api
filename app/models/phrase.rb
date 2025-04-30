@@ -11,6 +11,7 @@ class Phrase < ActiveRecord::Base
 	has_many :phrase_input_payloads, as: :payloadable
 	has_many :phrase_orderings
 
+	has_one :phrase_word_bank, dependent: :destroy
 
 	# Phrase.all.each do |phrase|
 	# 	begin 
@@ -515,11 +516,22 @@ class Phrase < ActiveRecord::Base
 
 		category_output[:exports] = exports
 
+		populate_word_bank(category_output)
+
 		category_output
 	end
 		
+	
 	private
+	
+	def populate_word_bank(category_output)
+		bank_words = (category_output[:original].split + category_output[:roman].split)
+		bank_words.uniq
 
+		bank = PhraseWordBank.find_or_create_by(phrase_id: self.id)
+		bank.update(words: (bank.words + bank_words).uniq)
+	end
+	
 	def build_catalog(language, phrase_dynamics)
 		phrase_dynamics.each_with_object({}) do |pd, catalog|
 			options = {

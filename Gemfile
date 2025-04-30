@@ -64,6 +64,8 @@ gem 'aws-sdk', "3.1.0"
 
 gem 'pry-byebug'
 
+gem 'marcel'
+
 group :development, :test do
   # See https://guides.rubyonrails.org/debugging_rails_applications.html#debugging-with-the-debug-gem
   gem "debug", platforms: %i[ mri windows ]

@@ -9,4 +9,9 @@ class QuestStepSerializer < ActiveModel::Serializer
              :failure_step_id,
              :quest_reward_id
 
+  has_many :quest_step_lessons
+
+  def quest_step_lessons
+    object.quest_step_lessons.map {|qsl| QuestStepLessonSerializer.new(qsl, language: instance_options[:language])}
+  end
 end
