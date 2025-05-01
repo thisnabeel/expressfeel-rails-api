@@ -8,6 +8,6 @@ class PhraseInputPayload < ApplicationRecord
   end
 
   def dynamic_slug
-    self.factory_dynamic_input.slug
+    self.payloadable.slug
   end
 end

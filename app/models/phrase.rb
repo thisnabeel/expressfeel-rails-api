@@ -428,6 +428,25 @@ class Phrase < ActiveRecord::Base
 	end
 
 	# 
+	def build_step(list)
+		materials = self.language.factory_materials
+		payload = {}
+		list.each do |item|
+			up_key = item.class.name.singularize
+			down_key = up_key.downcase
+			material = materials.find_by(materialable_type: up_key, materialable_id: item.id)
+			code = self.phrase_inputs.find { |pi| pi.code.start_with?(down_key) }&.code
+			if code.present?
+				hash = {
+						language_material: material,
+						english_material: material.materialable
+					}
+				payload[code] = hash
+				
+			end
+		end
+		return self.build(payload)
+	end
 
 	def build(payload={})
 		language = self.language
@@ -441,9 +460,8 @@ class Phrase < ActiveRecord::Base
 		# phrase_inputs
 		phrase_inputs = self.phrase_inputs.order("created_at")
 		phrase_items = {}
-		phrase_inputs.each do |pi|
+		phrase_inputs.order("id ASC").each do |pi|
 			if pi.phrase_inputable_type === "Factory"
-
 				if payload[pi.code]
 					hash = payload[pi.code]
 				else
@@ -476,8 +494,9 @@ class Phrase < ActiveRecord::Base
 				dynamic = pi.phrase_inputable
 				input_materials = {}
 				pi.phrase_input_payloads.map do |payload|
-					input_materials[payload.dynamic_slug] = phrase_items[payload.code]
+					input_materials[payload.payloadable.slug] = phrase_items[payload.code]
 				end
+
 				phrase_items[pi.code] = {
 					input_materials: input_materials, 
 					built: dynamic.build(input_materials.map { |key, item| 
@@ -509,9 +528,27 @@ class Phrase < ActiveRecord::Base
 		end
 
 		# Must process original first
+		category_output[:orderings] = {original: {}, roman: {}}
+		category_output[:solutions] = {original: [], roman: []}
 		[:original, :roman, :english].each do |category|
 			blocks = self.formula[category.to_s]
-			category_output[category] = build_category_output(blocks, catalog, self.language_id, material_selections, category, phrase_items, factories)
+			output_blocks = build_category_output(blocks, catalog, self.language_id, material_selections, category, phrase_items, factories)
+			
+			if output_blocks.present?
+				category_output[category] = output_blocks.join
+				self.phrase_orderings.where(category: category).each do |ordering|
+					reordered_blocks = ordering.line.map do |item|
+						output_blocks[item["ref_index"]]
+					end
+					category_output[:orderings][category][ordering.id] = reordered_blocks.join
+				end
+			else
+				category_output[category] = ""
+			end
+
+			if category_output[:solutions].keys.include? category
+				category_output[:solutions][category] = ([category_output[category]] + category_output[:orderings][category].map{|k,v| v}).uniq
+			end
 		end
 
 		category_output[:exports] = exports
@@ -550,7 +587,7 @@ class Phrase < ActiveRecord::Base
 			padding_right = block["padding_right"] ? " " : ""
 			output = PhraseBlockResolver.resolve(self, block, catalog, language_id, material_selections, category, exports, factories).to_s
 			padding_left + output + padding_right
-		end.join
+		end
 	end
 
 

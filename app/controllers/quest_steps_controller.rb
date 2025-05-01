@@ -5,7 +5,7 @@ class QuestStepsController < ApplicationController
   def index
     language = nil
     if params[:language_title].present?
-      language = Language.where('LOWER(title) = ?', params[:language_title].downcase).first
+      language = Language.where('LOWER(title) = ?', params[:language_title].downcase.gsub("_", " ")).first
     end
 
     render json: {quest: @quest, steps: @quest.quest_steps.order(:position).map{|qs| QuestStepSerializer.new(qs, language: language)}}

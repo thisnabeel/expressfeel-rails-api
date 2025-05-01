@@ -48,6 +48,13 @@ class PhraseOrderingsController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def phrase_ordering_params
-      params.require(:phrase_ordering).permit(:line, :description, :position, :phrase_id)
+      params.require(:phrase_ordering).permit(
+        :id,
+        :category,
+        :description,
+        :position,
+        :phrase_id,
+        line: [:ref_index, :optional]
+      )
     end
 end

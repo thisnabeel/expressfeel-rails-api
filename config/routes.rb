@@ -1,4 +1,5 @@
 Rails.application.routes.draw do
+  resources :quest_step_lesson_payloads
   resources :quest_step_lessons
 
   resources :phrase_orderings

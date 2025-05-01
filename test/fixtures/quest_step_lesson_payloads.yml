@@ -1,0 +1,11 @@
+# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+
+one:
+  quest_step_lesson: one
+  materialable_type: MyString
+  materialable_id: 1
+
+two:
+  quest_step_lesson: two
+  materialable_type: MyString
+  materialable_id: 1

@@ -5,6 +5,8 @@ class Language < ActiveRecord::Base
 	has_many :material_tag_options
 
 	has_many :factories, dependent: :destroy
+	has_many :factory_materials, through: :factories
+
 	has_many :factory_dynamics, through: :factories
 
 	has_many :phrases

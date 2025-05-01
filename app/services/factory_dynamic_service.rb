@@ -159,7 +159,6 @@ class FactoryDynamicService
 
     lhs, op, rhs = match.captures
     obj,key = lhs.split(".")
-
     card = context[obj]["factory_material"]["factory_material_details".to_sym].find { |detail| detail[:slug] == key }
 
     if key.include? "roman"

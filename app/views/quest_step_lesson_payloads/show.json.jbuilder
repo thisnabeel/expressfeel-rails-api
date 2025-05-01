@@ -1,0 +1,1 @@
+json.partial! "quest_step_lesson_payloads/quest_step_lesson_payload", quest_step_lesson_payload: @quest_step_lesson_payload
