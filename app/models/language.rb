@@ -34,6 +34,14 @@ class Language < ActiveRecord::Base
 	has_many :machines
 	has_many :reactions, through: :machines
 
+	after_create :make_default_factories
+
+	def make_default_factories
+		["nouns", "pronouns", "adjectives", "verbs"].each do |item|
+			Factory.create(language_id: self.id, name: item, materials_title: item, materialable_type: item.singularize.capitalize, active: true)
+		end
+	end
+
 	def self.populated
 		return Language.where(id: Phrase.all.where(ready: true).pluck(:language_id).uniq)
 	end

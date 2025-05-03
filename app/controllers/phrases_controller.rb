@@ -70,8 +70,26 @@ class PhrasesController < ApplicationController
   end
 
   def build
-    render status: 200, json: Phrase.find(params[:id]).build.to_json
+    @phrase = Phrase.includes(
+      :language,
+      :lesson,
+      :phrase_word_bank,
+      :phrase_orderings,
+      :phrase_dynamics,
+      :phrase_inputs => [:phrase_input_permits, :phrase_input_payloads],
+      :phrase_factories => [
+        :factory,
+        :factory_dynamic_outputs,
+        { factory: [
+            :factory_materials => [:factory_material_details]
+          ]
+        }
+      ]
+    ).find(params[:id])
+
+    render status: 200, json: @phrase.build.to_json
   end
+
 
   def quiz
     phrase = Phrase.includes(

@@ -25,7 +25,11 @@ Rails.application.routes.draw do
   resources :factory_materials
   resources :reactions
   resources :factory_rules
-  resources :factories
+  resources :factories do 
+    collection do 
+      post :fetch
+    end
+  end
   resources :language_adjectives
   resources :fragments
   resources :possessions

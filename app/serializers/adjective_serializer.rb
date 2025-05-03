@@ -1,4 +1,3 @@
 class AdjectiveSerializer < ActiveModel::Serializer
-  attributes :id
-
+  attributes :id, :word, :category
 end

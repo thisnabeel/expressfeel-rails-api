@@ -13,6 +13,12 @@ class FactoriesController < ApplicationController
     render json: @factory
   end
 
+  def fetch
+    language = Language.find(params[:language_id])
+    factory = language.factories.find_by(name: params[:name])
+    render json: factory
+  end
+
   # GET /factories/1/edit
   def edit
     @factories = Language.find(params[:id]).factories
