@@ -3,6 +3,7 @@ class Factory < ActiveRecord::Base
     has_many :factory_rules
     has_many :reactions
     has_many :factory_materials
+    has_many :factory_material_details, through: :factory_materials
     has_many :factory_dynamics
     has_many :factory_dynamic_inputs
 

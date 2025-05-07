@@ -46,7 +46,7 @@ gem "cocoon"
 
 gem "figaro"
 
-gem "ruby-openai"
+gem 'ruby-openai', '~> 4.2'
 
 gem 'active_model_serializers'
 

@@ -22,7 +22,14 @@ Rails.application.routes.draw do
   resources :factory_dynamic_parameters
   resources :pronouns
   resources :factory_dynamics
-  resources :factory_materials
+  resources :factory_materials do
+    collection do 
+      post :search
+    end
+    member do
+      get :suggest_details
+    end
+  end
   resources :reactions
   resources :factory_rules
   resources :factories do 
@@ -64,6 +71,9 @@ Rails.application.routes.draw do
 
   # config/routes.rb
   resources :quests do
+    collection do
+      get :popular
+    end
     resources :quest_steps do
       member do
         post :upload_image
@@ -100,6 +110,7 @@ Rails.application.routes.draw do
   get "/languages/:id/quiz" => "languages#quiz"
 
   get "/expressions/:id/generate_scenarios" => "lessons#generate_scenarios"
+
 
   get "/conjugations/sample" => "conjugations#sample"
   

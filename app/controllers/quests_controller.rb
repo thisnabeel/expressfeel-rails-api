@@ -14,6 +14,10 @@ class QuestsController < ApplicationController
     render json: @quest
   end
 
+  def popular
+    render json: Quest.popular
+  end
+
   # POST /quests
   # POST /quests.json
   def create
