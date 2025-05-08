@@ -46,6 +46,7 @@ class LessonsController < ApplicationController
   # GET /lessons/1
   # GET /lessons/1.json
   def show
+    render json: @lesson
   end
 
   # GET /lessons/new
@@ -55,6 +56,13 @@ class LessonsController < ApplicationController
 
   # GET /lessons/1/edit
   def edit
+  end
+
+  def generate_language_expression
+    language = Language.find(params[:language_id])
+    lesson = Lesson.find(params[:lesson_id])
+    prompt = "Act as a #{language.title} language teacher. Teach me how to: #{lesson.objective}. Also point out which parts of the phrase are not static and can change, such as pronouns, plurality, gender, etc. "
+    render json: WizardService.ask(prompt, "text")
   end
 
   # POST /lessons
@@ -85,24 +93,11 @@ class LessonsController < ApplicationController
   end
 # 
   def search
-    if User.is_admin? current_user
-
-        if params[:search] == ""
-          @lessons = Lesson.all.where.not(objective: nil).sample(10)
-        else
-          @lessons = Lesson.all.where('objective ILIKE ? OR objective ILIKE ?', "%#{params[:search]}%", "%#{params[:search]}%")
-        end
-
-      else
-
-        if params[:search] == ""
-          @lessons = Lesson.joins(:phrases).uniq.all.where.not(objective: nil).sample(10)
-        else
-          @lessons = Lesson.joins(:phrases).uniq.all.where('objective ILIKE ? OR objective ILIKE ?', "%#{params[:search]}%", "%#{params[:search]}%")
-        end
-
+    if params[:search] == ""
+      @lessons = Lesson.all.where.not(objective: nil).sample(10)
+    else
+      @lessons = Lesson.all.where('objective ILIKE ? OR objective ILIKE ?', "%#{params[:search]}%", "%#{params[:search]}%")
     end
-
     render json: @lessons
   end
 

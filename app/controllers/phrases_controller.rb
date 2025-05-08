@@ -1,5 +1,5 @@
 class PhrasesController < ApplicationController
-  before_action :set_phrase, only: [:show, :edit, :update, :destroy]
+  before_action :set_phrase, only: [:show, :edit, :update, :destroy, :verify_built_by_wizard]
 
   # GET /phrases
   # GET /phrases.json
@@ -68,6 +68,7 @@ class PhrasesController < ApplicationController
       render json: Phrase.where(language_id: item["language_id"], lesson_id: item["lesson_id"]).sample.id
     end
   end
+  
 
   def build
     @phrase = Phrase.includes(
@@ -88,6 +89,11 @@ class PhrasesController < ApplicationController
     ).find(params[:id])
 
     render status: 200, json: @phrase.build.to_json
+  end
+
+  def verify_built_by_wizard
+    prompt = "I'm an english speaker learning #{@phrase.language.title}, Is this correct the way I'm saying this: #{params[:text]}?"
+    render json: WizardService.ask(prompt, "text")
   end
 
 

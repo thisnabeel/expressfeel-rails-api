@@ -54,7 +54,11 @@ Rails.application.routes.draw do
   resources :user_missions
   resources :videos
   resources :missions
-  resources :phrases
+  resources :phrases do
+    collection do
+      post :verify_built_by_wizard
+    end
+  end
   resources :key_phrases
 
   resources :poems
@@ -73,6 +77,7 @@ Rails.application.routes.draw do
   resources :quests do
     collection do
       get :popular
+      post :quest_generation_wizard
     end
     resources :quest_steps do
       member do
@@ -89,6 +94,7 @@ Rails.application.routes.draw do
   resources :lessons do
     collection do
       post :reorder
+      get :generate_language_expression
     end
   end
 

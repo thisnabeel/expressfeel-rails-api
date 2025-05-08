@@ -18,6 +18,36 @@ class QuestsController < ApplicationController
     render json: Quest.popular
   end
 
+  def quest_generation_wizard
+    prompt = 'act as a quest maker for a language learning platform. quests look like this:
+
+      create_table "quest_steps", force: :cascade do |t|
+        t.string "image_url"
+        t.bigint "quest_id", null: false
+        t.text "body"
+        t.integer "success_step_id"
+        t.integer "failure_step_id"
+        t.integer "quest_reward_id"
+      end
+
+      create_table "quests", force: :cascade do |t|
+        t.string "title"
+        t.text "description"
+        t.bigint "quest_id"
+        t.string "image_url"
+        t.integer "difficulty"
+      end
+
+    ----
+    a step can have an expected phrase like: "ask..." or "express..." or "command..." or "request..." etc
+    correctly answering will move to the next step
+    ----
+    now make a quest in this style: ['+params[:prompt]+'], intermediate level max 10 steps
+    respond exactly like this one flattened array of steps: [{body: "", expected_expression: "", example_answer: ""}, ...]'
+
+    render json: WizardService.ask(prompt)
+  end
+
   # POST /quests
   # POST /quests.json
   def create
