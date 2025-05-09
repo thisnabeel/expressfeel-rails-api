@@ -469,11 +469,15 @@ class Phrase < ActiveRecord::Base
 					
 					if pi.phrase_input_permits.present?
 						permit_ids = pi.phrase_input_permits.where(permit: true).pluck(:material_tag_option_id)
-		
+						factory_material_ids = pi.phrase_input_permits.where(permit: true).pluck(:factory_material_id).compact
+						
 						# Step 2: Filter factory_materials
 						materials = pi.phrase_inputable.factory_materials.joins(:material_tags)
 							.where(material_tags: { material_tag_option_id: permit_ids })
 							.distinct
+
+						additional_materials = pi.phrase_inputable.factory_materials.where(id: factory_material_ids)
+						materials += additional_materials
 
 						# binding.pry
 					else

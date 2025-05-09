@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_05_01_042040) do
+ActiveRecord::Schema[7.1].define(version: 2025_05_09_000700) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -484,10 +484,12 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_01_042040) do
 
   create_table "phrase_input_permits", force: :cascade do |t|
     t.bigint "phrase_input_id", null: false
-    t.bigint "material_tag_option_id", null: false
+    t.bigint "material_tag_option_id"
     t.boolean "permit"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.bigint "factory_material_id"
+    t.index ["factory_material_id"], name: "index_phrase_input_permits_on_factory_material_id"
     t.index ["material_tag_option_id"], name: "index_phrase_input_permits_on_material_tag_option_id"
     t.index ["phrase_input_id"], name: "index_phrase_input_permits_on_phrase_input_id"
   end
@@ -744,6 +746,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_01_042040) do
   add_foreign_key "phrase_factories", "factories"
   add_foreign_key "phrase_factories", "phrases"
   add_foreign_key "phrase_input_payloads", "phrase_inputs"
+  add_foreign_key "phrase_input_permits", "factory_materials"
   add_foreign_key "phrase_input_permits", "material_tag_options"
   add_foreign_key "phrase_input_permits", "phrase_inputs"
   add_foreign_key "phrase_inputs_permits", "material_tag_options"

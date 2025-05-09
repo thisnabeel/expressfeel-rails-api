@@ -48,6 +48,6 @@ class PhraseInputPermitsController < ApplicationController
 
     # Only allow a list of trusted parameters through.
     def phrase_input_permit_params
-      params.require(:phrase_input_permit).permit(:phrase_input_id, :material_tag_option_id, :permit)
+      params.require(:phrase_input_permit).permit(:phrase_input_id, :material_tag_option_id, :permit, :factory_material_id)
     end
 end
