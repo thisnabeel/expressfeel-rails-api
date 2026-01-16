@@ -49,12 +49,14 @@ class BlocksQuiz < ApplicationRecord
                         original: item[:original],
                         english: item[:english],
                         tags: "",
+                        block_outputs: item[:block_outputs]
                     } 
 
                     if item[:roman].present?
                         hash[:roman] = item[:roman]
                     end
                     options.push(hash)
+                    persist_word_blocks!(phrase, hash)
                 end
 
                 options = options.reject { |obj| obj[:english].include?("err-") }
@@ -140,6 +142,50 @@ class BlocksQuiz < ApplicationRecord
                 .map{|block| 
                     block
                 }
+        end
+
+        def persist_word_blocks!(phrase, option)
+            return unless phrase.is_a?(Phrase)
+
+            block_outputs = option[:block_outputs] || {}
+            original_blocks = normalized_block_array(block_outputs[:original]) || sanitizedBlocks(option[:original].to_s)
+            roman_blocks = normalized_block_array(block_outputs[:roman]) || (option[:roman] ? sanitizedBlocks(option[:roman]) : [])
+            english_blocks = normalized_block_array(block_outputs[:english]) || (option[:english] ? sanitizedBlocks(option[:english]) : [])
+
+            original_blocks.each_with_index do |original_block, index|
+                next if original_block.blank?
+
+                roman_block = index < roman_blocks.length ? roman_blocks[index] : nil
+                english_block = index < english_blocks.length ? english_blocks[index] : nil
+
+                word_block = WordBlock.find_by(
+                    language_id: phrase.language_id,
+                    original: original_block,
+                    roman: roman_block,
+                    english: english_block
+                )
+
+                unless word_block
+                    word_block = WordBlock.create!(
+                        language: phrase.language,
+                        original: original_block,
+                        roman: roman_block,
+                        english: english_block
+                    )
+                end
+
+                WordBlockPhrase.find_or_create_by!(
+                    word_block: word_block,
+                    phrase: phrase
+                )
+            end
+        end
+
+        def normalized_block_array(blocks)
+            return nil unless blocks.respond_to?(:map)
+            blocks.map do |block|
+                block.is_a?(String) ? block.strip : block.to_s.strip
+            end
         end
 
         def sanitizedString(string)

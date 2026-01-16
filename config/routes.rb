@@ -70,6 +70,7 @@ Rails.application.routes.draw do
   resources :universals
   resources :articles
   resources :machines
+  resources :word_blocks, only: [:index]
 
   resources :games
 

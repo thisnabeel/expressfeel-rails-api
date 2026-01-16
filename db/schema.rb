@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_05_09_000700) do
+ActiveRecord::Schema[7.1].define(version: 2025_05_09_011100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -732,6 +732,27 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_09_000700) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
+  create_table "word_block_phrases", force: :cascade do |t|
+    t.bigint "word_block_id", null: false
+    t.bigint "phrase_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["phrase_id"], name: "index_word_block_phrases_on_phrase_id"
+    t.index ["word_block_id", "phrase_id"], name: "index_word_block_phrases_on_block_and_phrase", unique: true
+    t.index ["word_block_id"], name: "index_word_block_phrases_on_word_block_id"
+  end
+
+  create_table "word_blocks", force: :cascade do |t|
+    t.string "original", null: false
+    t.string "roman"
+    t.string "english"
+    t.bigint "language_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_id"], name: "index_word_blocks_on_language_id"
+    t.index ["original"], name: "index_word_blocks_on_original"
+  end
+
   add_foreign_key "factory_dynamic_inputs", "factories"
   add_foreign_key "factory_dynamic_inputs", "factory_dynamics"
   add_foreign_key "factory_dynamic_outputs", "factory_dynamic_inputs"
@@ -759,4 +780,7 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_09_000700) do
   add_foreign_key "quest_steps", "quests"
   add_foreign_key "quests", "quests"
   add_foreign_key "traits", "universals"
+  add_foreign_key "word_block_phrases", "phrases"
+  add_foreign_key "word_block_phrases", "word_blocks"
+  add_foreign_key "word_blocks", "languages"
 end

@@ -13,6 +13,9 @@ class Phrase < ActiveRecord::Base
 
 	has_one :phrase_word_bank, dependent: :destroy
 
+	has_many :word_block_phrases, dependent: :destroy
+	has_many :word_blocks, through: :word_block_phrases
+
 	# Phrase.all.each do |phrase|
 	# 	begin 
 	# 		phrase.inspect
@@ -539,6 +542,8 @@ class Phrase < ActiveRecord::Base
 			output_blocks = build_category_output(blocks, catalog, self.language_id, material_selections, category, phrase_items, factories)
 			
 			if output_blocks.present?
+				category_output[:block_outputs] ||= {}
+				category_output[:block_outputs][category] = output_blocks.dup
 				category_output[category] = output_blocks.join
 				self.phrase_orderings.where(category: category).each do |ordering|
 					reordered_blocks = ordering.line.map do |item|
