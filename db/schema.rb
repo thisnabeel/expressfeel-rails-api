@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2025_05_09_011100) do
+ActiveRecord::Schema[7.1].define(version: 2026_01_17_101221) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -589,6 +589,8 @@ ActiveRecord::Schema[7.1].define(version: 2025_05_09_011100) do
     t.string "object_word"
     t.string "is_word"
     t.string "do_word"
+    t.string "has_word"
+    t.boolean "countable", default: false, null: false
   end
 
   create_table "quest_step_lesson_payloads", force: :cascade do |t|

@@ -460,31 +460,48 @@ class Phrase < ActiveRecord::Base
 		category_output = {}
 		factories = self.phrase_factories.includes(factory: [:factory_materials]) 
 
-		# phrase_inputs
-		phrase_inputs = self.phrase_inputs.order("created_at")
+		# phrase_inputs - Load all at once, ordered by id
+		phrase_inputs = self.phrase_inputs.order("id ASC").to_a
 		phrase_items = {}
-		phrase_inputs.order("id ASC").each do |pi|
+		
+		# Pre-load permits for all phrase_inputs to avoid N+1
+		permit_data_by_input_id = {}
+		phrase_inputs.each do |pi|
+			permits = pi.phrase_input_permits.select { |p| p.permit == true }
+			permit_data_by_input_id[pi.id] = {
+				material_tag_option_ids: permits.map(&:material_tag_option_id).compact,
+				factory_material_ids: permits.map(&:factory_material_id).compact
+			}
+		end
+		
+		phrase_inputs.each do |pi|
 			if pi.phrase_inputable_type === "Factory"
 				if payload[pi.code]
 					hash = payload[pi.code]
 				else
 					materials = nil
+					permit_data = permit_data_by_input_id[pi.id]
 					
-					if pi.phrase_input_permits.present?
-						permit_ids = pi.phrase_input_permits.where(permit: true).pluck(:material_tag_option_id)
-						factory_material_ids = pi.phrase_input_permits.where(permit: true).pluck(:factory_material_id).compact
+					if permit_data && (permit_data[:material_tag_option_ids].any? || permit_data[:factory_material_ids].any?)
+						# Use eager-loaded associations
+						all_materials = pi.phrase_inputable.factory_materials.to_a
 						
-						# Step 2: Filter factory_materials
-						materials = pi.phrase_inputable.factory_materials.joins(:material_tags)
-							.where(material_tags: { material_tag_option_id: permit_ids })
-							.distinct
-
-						additional_materials = pi.phrase_inputable.factory_materials.where(id: factory_material_ids)
-						materials += additional_materials
-
-						# binding.pry
+						# Filter by material_tag_option_id using in-memory filtering
+						if permit_data[:material_tag_option_ids].any?
+							materials = all_materials.select do |fm|
+								fm.material_tags.any? { |mt| permit_data[:material_tag_option_ids].include?(mt.material_tag_option_id) }
+							end.uniq
+						else
+							materials = []
+						end
+						
+						# Add materials by id
+						if permit_data[:factory_material_ids].any?
+							additional_materials = all_materials.select { |fm| permit_data[:factory_material_ids].include?(fm.id) }
+							materials = (materials + additional_materials).uniq
+						end
 					else
-						materials = pi.phrase_inputable.factory_materials
+						materials = pi.phrase_inputable.factory_materials.to_a
 					end
 
 					material = materials.sample
@@ -500,8 +517,13 @@ class Phrase < ActiveRecord::Base
 			if pi.phrase_inputable_type === "FactoryDynamic"
 				dynamic = pi.phrase_inputable
 				input_materials = {}
-				pi.phrase_input_payloads.map do |payload|
-					input_materials[payload.payloadable.slug] = phrase_items[payload.code]
+				pi.phrase_input_payloads.each do |payload_item|
+					# Use eager-loaded associations
+					slug = payload_item.payloadable&.slug
+					code = payload_item.code
+					if slug && code
+						input_materials[slug] = phrase_items[code]
+					end
 				end
 
 				phrase_items[pi.code] = {
@@ -510,13 +532,19 @@ class Phrase < ActiveRecord::Base
 						[key, {"factory_material" => FactoryMaterialSerializer.new(item[:language_material]).as_json}] 
 					}.to_h)
 				}
+				exports[pi.code] = phrase_items[pi.code]
 			end
 
 			if pi.phrase_inputable_type === "Phrase"
 				input_phrase = pi.phrase_inputable
-				# pi.phrase_input_payloads.map {|pip| phrase_items[pip.payloadable.code]}
-				payload = pi.phrase_input_payloads.map { |pip| [pip.payloadable.code, phrase_items[pip.payloadable.code]] }.to_h
-				built = input_phrase.build(payload)
+				# Use eager-loaded associations
+				nested_payload = pi.phrase_input_payloads.each_with_object({}) do |pip, hash|
+					code = pip.payloadable&.code
+					if code && phrase_items[code]
+						hash[code] = phrase_items[code]
+					end
+				end
+				built = input_phrase.build(nested_payload)
 
 				# Merge nested exports into current exports
 				if built[:exports]
@@ -524,7 +552,7 @@ class Phrase < ActiveRecord::Base
 				end
 
 				phrase_items[pi.code] = {
-					input_materials: input_materials,
+					input_materials: {},
 					built: built
 				}
 
@@ -535,8 +563,10 @@ class Phrase < ActiveRecord::Base
 		end
 
 		# Must process original first
-		category_output[:orderings] = {original: {}, roman: {}}
+		category_output[:orderings] = {original: [], roman: []}
 		category_output[:solutions] = {original: [], roman: []}
+		output_blocks_by_category = {}
+		
 		[:original, :roman, :english].each do |category|
 			blocks = self.formula[category.to_s]
 			output_blocks = build_category_output(blocks, catalog, self.language_id, material_selections, category, phrase_items, factories)
@@ -545,18 +575,32 @@ class Phrase < ActiveRecord::Base
 				category_output[:block_outputs] ||= {}
 				category_output[:block_outputs][category] = output_blocks.dup
 				category_output[category] = output_blocks.join
-				self.phrase_orderings.where(category: category).each do |ordering|
-					reordered_blocks = ordering.line.map do |item|
-						output_blocks[item["ref_index"]]
-					end
-					category_output[:orderings][category][ordering.id] = reordered_blocks.join
-				end
+				output_blocks_by_category[category] = output_blocks
 			else
 				category_output[category] = ""
 			end
+		end
 
-			if category_output[:solutions].keys.include? category
-				category_output[:solutions][category] = ([category_output[category]] + category_output[:orderings][category].map{|k,v| v}).uniq
+		# Process phrase_orderings and apply to both original and roman
+		# Pre-load all orderings once instead of querying inside the loop
+		all_orderings = self.phrase_orderings.to_a
+		[:original, :roman].each do |category|
+			if output_blocks_by_category[category].present?
+				# Filter in-memory instead of querying
+				orderings = all_orderings.select { |o| o.category.nil? || o.category == category.to_s }
+				orderings.each do |ordering|
+					reordered_blocks = ordering.line.map do |item|
+						output_blocks_by_category[category][item["ref_index"]]
+					end
+					category_output[:orderings][category] << reordered_blocks
+				end
+			end
+		end
+
+		# Build solutions from orderings
+		[:original, :roman].each do |category|
+			if category_output[:solutions].keys.include?(category)
+				category_output[:solutions][category] = ([category_output[category]] + category_output[:orderings][category].map{|reordered| reordered.join}).uniq
 			end
 		end
 

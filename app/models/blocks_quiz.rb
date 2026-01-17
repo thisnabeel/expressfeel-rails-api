@@ -42,6 +42,9 @@ class BlocksQuiz < ApplicationRecord
                 built = [phrase.build, phrase.build, phrase.build]
                 puts "BUILD #{built}"
 
+                # Get orderings from first built phrase
+                built_phrase_with_orderings = built.first || phrase.build
+
                 built.each do |item|
                     next if !item[:original].present? && !item[:english].present?
                     hash = {
@@ -63,11 +66,17 @@ class BlocksQuiz < ApplicationRecord
 
                 options = options.shuffle
                 main = options[0]
+                
+                if main.nil? || options.empty?
+                    raise "Failed to generate quiz options - no valid options after filtering"
+                end
+                
                 direction = phrase.language.direction
 
                 tags = ""
 
                 meta = {}
+                main[:orderings] = built_phrase_with_orderings[:orderings] if built_phrase_with_orderings.present?
 
             else
             end
@@ -87,9 +96,13 @@ class BlocksQuiz < ApplicationRecord
             #     main = options[0]
             # end
 
+            if main.nil?
+                raise "Failed to generate quiz - main option is nil"
+            end
+
             options = options.shuffle
 
-            original = sanitizedBlocks(main[:original]).join(" ")
+            original = sanitizedBlocks(main[:original] || "").join(" ")
             puts 'debug'
             puts main
             english = main[:english]
@@ -138,6 +151,7 @@ class BlocksQuiz < ApplicationRecord
         end
         private
         def sanitizedBlocks(string)
+            return [] if string.nil?
             return string.split(" ")
                 .map{|block| 
                     block
@@ -243,10 +257,38 @@ class BlocksQuiz < ApplicationRecord
 
             puts "solution"
 
+            # Helper to clean spacing: remove double spaces and trim
+            clean_spacing = lambda do |str|
+                return "" unless str.present?
+                str.strip.gsub(/\s+/, " ")
+            end
+
             list = {
-                original: [main[:original]],
-                roman: [main[:roman]]
+                original: [clean_spacing.call(main[:original])],
+                roman: [clean_spacing.call(main[:roman])]
             }
+
+            # Add orderings if present
+            if main[:orderings].present?
+                # Join each ordering array and add to solutions
+                if main[:orderings][:original].present?
+                    main[:orderings][:original].each do |reordered_blocks|
+                        joined = clean_spacing.call(reordered_blocks.join(" "))
+                        list[:original] << joined if joined.present?
+                    end
+                end
+                
+                if main[:orderings][:roman].present?
+                    main[:orderings][:roman].each do |reordered_blocks|
+                        joined = clean_spacing.call(reordered_blocks.join(" "))
+                        list[:roman] << joined if joined.present?
+                    end
+                end
+            end
+
+            # Remove duplicates and ensure unique solutions
+            list[:original] = list[:original].uniq.reject(&:blank?)
+            list[:roman] = list[:roman].uniq.reject(&:blank?)
 
             # category, key = attribute.split("**")[1].split(":")
 

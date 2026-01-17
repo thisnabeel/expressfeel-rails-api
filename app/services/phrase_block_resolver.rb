@@ -52,33 +52,35 @@ class PhraseBlockResolver
       output_key = @block["output_key"]
 
       if !@block["output_key"].present?
+        return "" unless @exports[code].present?
         if  @category.to_s === "english"
           if @block["english_material_code"] && @block["english_material_attribute"]
-            
-            return @exports[code][:built][:exports][@block["english_material_code"]][:english_material][@block["english_material_attribute"]]
+            return "" unless @exports[code][:built] && @exports[code][:built][:exports]
+            return @exports[code][:built][:exports][@block["english_material_code"]][:english_material][@block["english_material_attribute"]] || ""
           elsif !@block["english_material_code"] && @block["english_material_attribute"]
-            return @exports[code][:english_material][@block["english_material_attribute"]]
+            return @exports[code][:english_material]&.[](@block["english_material_attribute"]) || ""
           else
-            return @exports[code][:built][@category]
+            return @exports[code][:built]&.[](@category) || ""
           end
         else
-          return @exports[code][:built][@category]
+          return @exports[code][:built]&.[](@category) || ""
         end
       end
       category_output_key = @block["output_key"] + "_#{@category}"
 
 
       details = @exports[code]
+      return "" unless details.present?
       if details[:built]
         value = details[:built][category_output_key]
         value
       else
         if @category.to_s === "english"
-          value = details[:english_material][output_key]
+          value = details[:english_material]&.[](output_key)
         else
-          value = details[:language_material].factory_material_details.find_by(slug: output_key)&.value
+          value = details[:language_material]&.factory_material_details&.find_by(slug: output_key)&.value
         end
-        value
+        value || ""
       end
 
     elsif @block["body"].present?
