@@ -60,10 +60,12 @@ class PhraseBlockResolver
           elsif !@block["english_material_code"] && @block["english_material_attribute"]
             return @exports[code][:english_material]&.[](@block["english_material_attribute"]) || ""
           else
-            return @exports[code][:built]&.[](@category) || ""
+            built_output = @exports[code][:built]&.[](@category) || ""
+            return inject_custom_texts(built_output, code)
           end
         else
-          return @exports[code][:built]&.[](@category) || ""
+          built_output = @exports[code][:built]&.[](@category) || ""
+          return inject_custom_texts(built_output, code)
         end
       end
       category_output_key = @block["output_key"] + "_#{@category}"
@@ -73,6 +75,7 @@ class PhraseBlockResolver
       return "" unless details.present?
       if details[:built]
         value = details[:built][category_output_key]
+        value = inject_custom_texts(value, code, output_key) if value.present?
         value
       else
         if @category.to_s === "english"
@@ -91,6 +94,90 @@ class PhraseBlockResolver
   end
 
   private
+
+  def inject_custom_texts(output, code, output_key = nil)
+    # Safely read inserted_texts for this category (may be nil/empty)
+    inserted_texts =
+      if @block["inserted_texts"].is_a?(Hash)
+        @block["inserted_texts"][@category.to_s]
+      else
+        nil
+      end
+    inserted_texts = inserted_texts.is_a?(Hash) ? inserted_texts : {}
+  
+    # Get the referenced phrase to access its formula blocks
+    phrase_input = @phrase.phrase_inputs.find { |pi| pi.code == code }
+    return output unless phrase_input && phrase_input.phrase_inputable_type == "Phrase"
+    
+    referenced_phrase = phrase_input.phrase_inputable
+    return output unless referenced_phrase.formula && referenced_phrase.formula[@category.to_s]
+    
+    # Build individual blocks from referenced phrase
+    blocks = referenced_phrase.formula[@category.to_s]
+    catalog = @catalog || {}
+    material_selections = {}
+    exports = @exports[code]&.[](:built)&.[](:exports) || {}
+    factories = @factories || []
+    
+    built_blocks = blocks.map do |block|
+      PhraseBlockResolver.resolve(
+        referenced_phrase, 
+        block, 
+        catalog, 
+        @language_id, 
+        material_selections, 
+        @category, 
+        exports, 
+        factories
+      ).to_s
+    end
+    
+    # Apply block order swaps first (swap adjacent blocks) – this works even if no inserted_texts
+    block_order_swaps = @block["block_order_swaps"]&.[](@category.to_s)
+    if block_order_swaps.is_a?(Hash) && block_order_swaps.present?
+      # Process swaps from the end to avoid index issues
+      (built_blocks.length - 1).downto(0) do |i|
+        if block_order_swaps[i.to_s] == true || block_order_swaps[i] == true
+          # Swap blocks at position i and i+1
+          if i + 1 < built_blocks.length
+            built_blocks[i], built_blocks[i + 1] = built_blocks[i + 1], built_blocks[i]
+          end
+        end
+      end
+    end
+
+    # Optional extra paddings per referenced block (from UI "btn spacer" on block-key-item)
+    block_paddings = @block["block_paddings"]&.[](@category.to_s)
+    block_paddings = nil unless block_paddings.is_a?(Hash)
+  
+    # Insert custom texts at specified positions (if any) and apply extra paddings
+    result = []
+    built_blocks.each_with_index do |block_output, index|
+      # Apply extra padding around this block if specified
+      if block_paddings
+        pad_cfg = block_paddings[index.to_s] || block_paddings[index]
+        if pad_cfg.is_a?(Hash)
+          pad_left  = pad_cfg["left"]  || pad_cfg[:left]
+          pad_right = pad_cfg["right"] || pad_cfg[:right]
+          block_output = "#{pad_left ? ' ' : ''}#{block_output}#{pad_right ? ' ' : ''}"
+        end
+      end
+
+      result << block_output
+      # Insert custom text after this block if specified
+      insert_data = inserted_texts[index.to_s]
+      if insert_data.present?
+        insert_value = insert_data.is_a?(Hash) ? insert_data["value"] || insert_data[:value] : insert_data
+        if insert_value.present?
+          padding_left = (insert_data.is_a?(Hash) && (insert_data["padding_left"] || insert_data[:padding_left])) ? " " : ""
+          padding_right = (insert_data.is_a?(Hash) && (insert_data["padding_right"] || insert_data[:padding_right])) ? " " : ""
+          result << padding_left + insert_value.to_s + padding_right
+        end
+      end
+    end
+    
+    result.join
+  end
 
   def export_packager(block)
     return unless @primary_pass
