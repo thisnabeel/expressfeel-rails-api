@@ -117,6 +117,8 @@ class FactoryDynamicService
           val = interpolate(val, context)
   
           case morph_type
+          when "init"
+            current = val
           when "add_prefix"
             current = "#{val}#{current}"
           when "add_suffix"
