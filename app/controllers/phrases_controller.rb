@@ -80,9 +80,9 @@ class PhrasesController < ApplicationController
       :phrase_inputs => [:phrase_input_permits, :phrase_input_payloads],
       :phrase_factories => [
         :factory,
-        :factory_dynamic_outputs,
         { factory: [
-            :factory_materials => [:factory_material_details]
+            :factory_materials => [:factory_material_details],
+            :factory_dynamics => [:factory_dynamic_outputs]
           ]
         }
       ]

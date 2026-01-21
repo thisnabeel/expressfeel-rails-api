@@ -23,7 +23,12 @@ class FactoryDynamicService
 
     if node["if"]
       condition = node["if"]["condition"] || "true"
+      # Handle both array and string with && operators
+      if condition.is_a?(String) && condition.include?("&&")
+        conditions = condition.split("&&").map(&:strip)
+      else
       conditions = Array(condition)
+      end
       condition_passing = !conditions.map {|c| evaluate_condition(c, context)}.include?(false)
       if condition_passing
         return walk_tree(node["if"]["then"], context)
@@ -36,7 +41,12 @@ class FactoryDynamicService
       node["sequence"].each do |morph_step|
         if morph_step["if"]
           condition = morph_step["if"]["condition"] || "true"
+          # Handle both array and string with && operators
+          if condition.is_a?(String) && condition.include?("&&")
+            conditions = condition.split("&&").map(&:strip)
+          else
           conditions = Array(condition)
+          end
           condition_passing = !conditions.map {|c| evaluate_condition(c, context)}.include?(false)
           if condition_passing
             run_morph_chain(morph_step["if"]["then"], context)
@@ -159,13 +169,54 @@ class FactoryDynamicService
 
     lhs, op, rhs = match.captures
     obj,key = lhs.split(".")
-    card = context[obj]["factory_material"]["factory_material_details".to_sym].find { |detail| detail[:slug] == key }
+    return false unless context[obj] && context[obj]["factory_material"]
+    
+    # First try to find in factory_material_details
+    material_details = context[obj]["factory_material"]["factory_material_details".to_sym]
+    card = material_details.is_a?(Array) ? material_details.find { |detail| detail[:slug] == key } : nil
 
-    if key.include? "roman"
-      if !card.present?
-        return false
+    # If not found in details, try to access materialable properties
+    if card.nil? && context[obj]["factory_material"]["materialable_id"].present?
+      materialable_type = context[obj]["factory_material"]["materialable_type"]
+      materialable_id = context[obj]["factory_material"]["materialable_id"]
+      
+      if materialable_type && materialable_id
+        begin
+          materialable_class = materialable_type.constantize
+          materialable = materialable_class.find_by(id: materialable_id)
+          if materialable
+            # Try direct attribute access first
+            if materialable.respond_to?(key.to_sym)
+              value = materialable.send(key.to_sym)
+              case op
+              when '=='
+                return value.to_s == rhs
+              when '!='
+                return value.to_s != rhs
+              end
+            # Try accessing as hash key (for serialized attributes)
+            elsif materialable.respond_to?(:[]) && materialable[key.to_s]
+              value = materialable[key.to_s]
+              case op
+              when '=='
+                return value.to_s == rhs
+              when '!='
+                return value.to_s != rhs
+              end
+            end
+          end
+        rescue => e
+          # If materialable lookup fails, fall through to check details
+        end
       end
     end
+
+    # Fallback to factory_material_details
+    if key.include?("roman") && !card.present?
+      return false
+    end
+    
+    return false unless card
     value = card[:value] 
 
     case op

@@ -256,6 +256,7 @@ Rails.application.routes.draw do
 
   get "/languages/:id/phrases" => "languages#phrases"
 
+  post 'factory_dynamics/:id/run_config', to: 'factory_dynamics#run_config'
   post 'factory_dynamics/run_config', to: 'factory_dynamics#run_config'
   post 'factory_dynamics/run_flow_config', to: 'factory_dynamics#run_config'
 

@@ -514,17 +514,18 @@ class Phrase < ActiveRecord::Base
 				phrase_items[pi.code] = hash
 			end
 
-			if pi.phrase_inputable_type === "FactoryDynamic"
-				dynamic = pi.phrase_inputable
-				input_materials = {}
-				pi.phrase_input_payloads.each do |payload_item|
-					# Use eager-loaded associations
-					slug = payload_item.payloadable&.slug
-					code = payload_item.code
-					if slug && code
-						input_materials[slug] = phrase_items[code]
-					end
+		if pi.phrase_inputable_type === "FactoryDynamic"
+			dynamic = pi.phrase_inputable
+			input_materials = {}
+			pi.phrase_input_payloads.each do |payload_item|
+				# Use eager-loaded associations
+				# payloadable can be FactoryDynamicInput (has slug) or PhraseInput (doesn't have slug)
+				slug = payload_item.payloadable.is_a?(FactoryDynamicInput) ? payload_item.payloadable.slug : nil
+				code = payload_item.code
+				if slug && code
+					input_materials[slug] = phrase_items[code]
 				end
+			end
 
 				phrase_items[pi.code] = {
 					input_materials: input_materials, 

@@ -1,5 +1,5 @@
 class FactoryDynamicsController < ApplicationController
-  before_action :set_factory_dynamic, only: [:show, :edit, :update, :destroy, :quiz, :build]
+  before_action :set_factory_dynamic, only: [:show, :edit, :update, :destroy, :quiz, :build, :run_config]
 
   # GET /factory_dynamics
   # GET /factory_dynamics.json
@@ -84,6 +84,24 @@ class FactoryDynamicsController < ApplicationController
     # funnels["verb"]["factory_material"]["factory_material_details"]
     # binding.pry
     render json: @factory_dynamic.build
+  end
+
+  def run_config
+    # Get factory_dynamic from params[:id] or use @factory_dynamic if set by before_action
+    dynamic = params[:id] ? FactoryDynamic.find(params[:id]) : (@factory_dynamic || FactoryDynamic.find(params[:dynamic][:id]))
+    funnels = params[:funnels] || {}
+    
+    # Convert funnels hash keys to match expected format
+    formatted_funnels = {}
+    funnels.each do |key, funnel_data|
+      if funnel_data["factory_material"]
+        # Ensure factory_material is properly formatted
+        formatted_funnels[key] = {
+          "factory_material" => funnel_data["factory_material"]
+        }
+      end
+    end
+    render json: dynamic.build(formatted_funnels.present? ? formatted_funnels : nil)
   end
 
   private

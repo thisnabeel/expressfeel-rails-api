@@ -17,9 +17,13 @@ class FactoryDynamic < ActiveRecord::Base
     @@permute_material = nil
 
     def build(funnels = nil)
-        if !funnels.present?
-            funnels = {}
+        # Initialize funnels hash if not provided
+        funnels ||= {}
+        
+        # For each factory_dynamic_input, if it doesn't have a locked material (funnel),
+        # randomly sample one
             self.factory_dynamic_inputs.each do |fdi|
+            unless funnels[fdi.slug].present?
                 funnels[fdi.slug] = {
                     "factory_material" => FactoryMaterialSerializer.new(fdi.factory.factory_materials.sample).as_json
                 }
