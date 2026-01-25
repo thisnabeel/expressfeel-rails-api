@@ -124,6 +124,7 @@ class PhrasesController < ApplicationController
     end
 
     output[:language] = phrase.language
+    output[:lesson] = phrase.lesson
     render json: output
   end
 
