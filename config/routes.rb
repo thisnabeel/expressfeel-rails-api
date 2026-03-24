@@ -124,8 +124,26 @@ Rails.application.routes.draw do
   resources :conjugations
 
   get '/languages/:id/material_tag_options' => "languages#material_tag_options"
-  
-  
+
+  get "/languages/:language_id/chapters" => "chapters#for_language"
+  post "/languages/:language_id/chapters" => "chapters#create"
+  resources :chapters, only: [:show, :update, :destroy] do
+    member do
+      post :move
+      post :split_single_item
+    end
+  end
+
+  post "/chapters/:chapter_id/chapter_layers" => "chapter_layers#create"
+  patch "/chapter_layers/:id" => "chapter_layers#update"
+  delete "/chapter_layers/:id" => "chapter_layers#destroy"
+
+  post "/chapter_layers/:chapter_layer_id/chapter_layer_items" => "chapter_layer_items#create"
+  post "/chapter_layers/:chapter_layer_id/chapter_layer_items/insert_after" => "chapter_layer_items#insert_after"
+  patch "/chapter_layer_items/:id" => "chapter_layer_items#update"
+  delete "/chapter_layer_items/:id" => "chapter_layer_items#destroy"
+  patch "/chapter_layers/:chapter_layer_id/chapter_layer_items/reorder" => "chapter_layer_items#reorder"
+
   post "/factory_dynamics/build" => "factory_dynamics#build"
   get "languages/:id/factory_dynamics" => "factory_dynamics#by_language"
 

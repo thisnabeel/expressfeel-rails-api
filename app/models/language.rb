@@ -35,6 +35,7 @@ class Language < ActiveRecord::Base
 	has_many :reactions, through: :machines
 
 	has_many :word_blocks, dependent: :destroy
+	has_many :chapters, dependent: :destroy
 
 	after_create :make_default_factories
 

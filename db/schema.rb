@@ -10,7 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_01_17_101221) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_22_120000) do
+  create_schema "_heroku"
+  create_schema "heroku_ext"
+
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -104,6 +107,43 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_17_101221) do
     t.integer "language_id"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+  end
+
+  create_table "chapter_layer_items", force: :cascade do |t|
+    t.bigint "chapter_layer_id", null: false
+    t.text "body"
+    t.string "style", default: "inline", null: false
+    t.text "hint"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_layer_id", "position"], name: "index_chapter_layer_items_on_chapter_layer_id_and_position"
+    t.index ["chapter_layer_id"], name: "index_chapter_layer_items_on_chapter_layer_id"
+  end
+
+  create_table "chapter_layers", force: :cascade do |t|
+    t.bigint "chapter_id", null: false
+    t.string "title", default: "", null: false
+    t.boolean "active", default: true, null: false
+    t.boolean "is_default", default: false, null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_id", "position"], name: "index_chapter_layers_on_chapter_id_and_position"
+    t.index ["chapter_id"], name: "index_chapter_layers_on_chapter_id"
+  end
+
+  create_table "chapters", force: :cascade do |t|
+    t.string "title", null: false
+    t.text "description"
+    t.bigint "chapter_id"
+    t.integer "position", default: 0, null: false
+    t.bigint "language_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_id"], name: "index_chapters_on_chapter_id"
+    t.index ["language_id", "chapter_id", "position"], name: "index_chapters_on_language_id_and_chapter_id_and_position"
+    t.index ["language_id"], name: "index_chapters_on_language_id"
   end
 
   create_table "conjugation_rules", id: :serial, force: :cascade do |t|
@@ -295,494 +335,3 @@ ActiveRecord::Schema[7.1].define(version: 2026_01_17_101221) do
     t.integer "position"
   end
 
-  create_table "key_phrases", id: :serial, force: :cascade do |t|
-    t.integer "lesson_key"
-    t.string "phrase"
-    t.text "body"
-    t.string "recording"
-    t.text "tags"
-    t.integer "position"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "language_adjectives", id: :serial, force: :cascade do |t|
-    t.text "folder"
-    t.integer "adjective_id"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "language_nouns", id: :serial, force: :cascade do |t|
-    t.text "folder"
-    t.integer "noun_id"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "language_traits", id: :serial, force: :cascade do |t|
-    t.text "body"
-    t.integer "universal_id"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.integer "trait_id"
-    t.boolean "active", default: false
-    t.text "crawler"
-    t.index ["language_id"], name: "index_language_traits_on_language_id"
-    t.index ["universal_id"], name: "index_language_traits_on_universal_id"
-  end
-
-  create_table "language_verbs", id: :serial, force: :cascade do |t|
-    t.integer "language_id"
-    t.integer "verb_id"
-    t.text "folder"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "languages", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.string "direction", default: "ltr"
-    t.string "flags", default: ""
-  end
-
-  create_table "lesson_keys", id: :serial, force: :cascade do |t|
-    t.string "language"
-    t.text "body"
-    t.text "examples"
-    t.text "folder"
-    t.integer "lesson_id"
-    t.datetime "created_at", precision: nil
-    t.datetime "updated_at", precision: nil
-    t.integer "language_id"
-  end
-
-  create_table "lesson_plans", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.integer "language_id"
-  end
-
-  create_table "lessons", id: :serial, force: :cascade do |t|
-    t.string "expression"
-    t.integer "position"
-    t.datetime "created_at", precision: nil
-    t.datetime "updated_at", precision: nil
-    t.text "objective"
-    t.string "category"
-    t.integer "lesson_plan_id"
-  end
-
-  create_table "machines", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "position"
-    t.integer "language_id"
-    t.text "description"
-    t.text "allowed_inputs"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "material_tag_options", force: :cascade do |t|
-    t.bigint "language_id", null: false
-    t.string "title"
-    t.integer "position"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["language_id"], name: "index_material_tag_options_on_language_id"
-  end
-
-  create_table "material_tags", force: :cascade do |t|
-    t.bigint "material_tag_option_id", null: false
-    t.bigint "factory_material_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["factory_material_id"], name: "index_material_tags_on_factory_material_id"
-    t.index ["material_tag_option_id"], name: "index_material_tags_on_material_tag_option_id"
-  end
-
-  create_table "missions", id: :serial, force: :cascade do |t|
-    t.integer "phrase_id"
-    t.text "body"
-    t.string "video"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "noun_rules", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "description"
-    t.integer "position"
-    t.integer "trait_id"
-    t.string "slug"
-    t.boolean "required"
-    t.text "rules"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "nouns", id: :serial, force: :cascade do |t|
-    t.string "base"
-    t.string "category"
-    t.string "tags"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.boolean "proper", default: false
-    t.integer "quantity", default: 1
-  end
-
-  create_table "passport_phrases", id: :serial, force: :cascade do |t|
-    t.integer "user_id"
-    t.integer "phrase_id"
-    t.integer "lesson_id"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "phrase_dynamics", force: :cascade do |t|
-    t.bigint "factory_dynamic_id"
-    t.bigint "phrase_id"
-    t.integer "position"
-    t.json "input_selections", default: {}
-    t.string "variable_key"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["factory_dynamic_id"], name: "index_phrase_dynamics_on_factory_dynamic_id"
-    t.index ["phrase_id"], name: "index_phrase_dynamics_on_phrase_id"
-  end
-
-  create_table "phrase_factories", force: :cascade do |t|
-    t.bigint "phrase_id", null: false
-    t.bigint "factory_id", null: false
-    t.integer "position"
-    t.string "code"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["factory_id"], name: "index_phrase_factories_on_factory_id"
-    t.index ["phrase_id"], name: "index_phrase_factories_on_phrase_id"
-  end
-
-  create_table "phrase_input_payloads", force: :cascade do |t|
-    t.bigint "phrase_input_id", null: false
-    t.integer "phrase_payload_id"
-    t.integer "factory_dynamic_input_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "payloadable_type"
-    t.integer "payloadable_id"
-    t.index ["payloadable_type", "payloadable_id"], name: "idx_on_payloadable_type_payloadable_id_970fa25673"
-    t.index ["phrase_input_id"], name: "index_phrase_input_payloads_on_phrase_input_id"
-  end
-
-  create_table "phrase_input_permits", force: :cascade do |t|
-    t.bigint "phrase_input_id", null: false
-    t.bigint "material_tag_option_id"
-    t.boolean "permit"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.bigint "factory_material_id"
-    t.index ["factory_material_id"], name: "index_phrase_input_permits_on_factory_material_id"
-    t.index ["material_tag_option_id"], name: "index_phrase_input_permits_on_material_tag_option_id"
-    t.index ["phrase_input_id"], name: "index_phrase_input_permits_on_phrase_input_id"
-  end
-
-  create_table "phrase_inputs", force: :cascade do |t|
-    t.string "phrase_inputable_type"
-    t.integer "phrase_inputable_id"
-    t.string "code"
-    t.integer "position"
-    t.integer "phrase_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-  end
-
-  create_table "phrase_inputs_permits", force: :cascade do |t|
-    t.bigint "phrase_input_id", null: false
-    t.bigint "material_tag_option_id", null: false
-    t.boolean "permit"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["material_tag_option_id"], name: "index_phrase_inputs_permits_on_material_tag_option_id"
-    t.index ["phrase_input_id"], name: "index_phrase_inputs_permits_on_phrase_input_id"
-  end
-
-  create_table "phrase_orderings", force: :cascade do |t|
-    t.jsonb "line", default: []
-    t.text "description"
-    t.integer "position"
-    t.bigint "phrase_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.string "category"
-    t.index ["phrase_id"], name: "index_phrase_orderings_on_phrase_id"
-  end
-
-  create_table "phrase_word_banks", force: :cascade do |t|
-    t.bigint "phrase_id", null: false
-    t.jsonb "words", default: []
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["phrase_id"], name: "index_phrase_word_banks_on_phrase_id"
-  end
-
-  create_table "phrases", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "body", default: ""
-    t.string "recording"
-    t.string "tags", default: ""
-    t.integer "position"
-    t.integer "language_id"
-    t.integer "lesson_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.string "translit", default: ""
-    t.boolean "ready", default: false
-    t.json "new_formula", default: {}, null: false
-    t.jsonb "formula", default: {"roman"=>[], "english"=>[], "original"=>[]}, null: false
-  end
-
-  create_table "poems", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "body"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.string "link"
-  end
-
-  create_table "possessions", id: :serial, force: :cascade do |t|
-    t.integer "language_id"
-    t.integer "position"
-    t.string "tags"
-    t.text "original"
-    t.text "roman"
-    t.text "english"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.text "instructions"
-    t.text "roman_instructions"
-  end
-
-  create_table "prompts", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "body"
-    t.integer "difficulty"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "pronouns", id: :serial, force: :cascade do |t|
-    t.string "word"
-    t.string "category"
-    t.string "tags"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.string "possession"
-    t.string "object_word"
-    t.string "is_word"
-    t.string "do_word"
-    t.string "has_word"
-    t.boolean "countable", default: false, null: false
-  end
-
-  create_table "quest_step_lesson_payloads", force: :cascade do |t|
-    t.bigint "quest_step_lesson_id", null: false
-    t.string "materialable_type"
-    t.integer "materialable_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["quest_step_lesson_id"], name: "index_quest_step_lesson_payloads_on_quest_step_lesson_id"
-  end
-
-  create_table "quest_step_lessons", force: :cascade do |t|
-    t.bigint "lesson_id", null: false
-    t.bigint "quest_step_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["lesson_id"], name: "index_quest_step_lessons_on_lesson_id"
-    t.index ["quest_step_id"], name: "index_quest_step_lessons_on_quest_step_id"
-  end
-
-  create_table "quest_steps", force: :cascade do |t|
-    t.string "image_url"
-    t.string "thumbnail_url"
-    t.bigint "quest_id", null: false
-    t.integer "position"
-    t.text "body"
-    t.integer "success_step_id"
-    t.integer "failure_step_id"
-    t.integer "quest_reward_id"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["quest_id"], name: "index_quest_steps_on_quest_id"
-  end
-
-  create_table "quests", force: :cascade do |t|
-    t.string "title"
-    t.text "description"
-    t.integer "position"
-    t.bigint "quest_id"
-    t.string "image_url"
-    t.integer "difficulty"
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["quest_id"], name: "index_quests_on_quest_id"
-  end
-
-  create_table "reactions", id: :serial, force: :cascade do |t|
-    t.integer "factory_id"
-    t.integer "position"
-    t.string "tags"
-    t.text "original"
-    t.text "roman"
-    t.text "english"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.text "instructions"
-    t.text "roman_instructions"
-    t.integer "machine_id"
-  end
-
-  create_table "subscriptions", id: :serial, force: :cascade do |t|
-    t.string "plan_id"
-    t.integer "user_id"
-    t.boolean "active", default: true
-    t.datetime "current_period_ends_at", precision: nil
-    t.string "stripe_id"
-  end
-
-  create_table "traits", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "body"
-    t.text "summary"
-    t.integer "universal_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.integer "trait_id"
-    t.integer "position"
-    t.string "code"
-    t.string "tags", default: ""
-    t.index ["universal_id"], name: "index_traits_on_universal_id"
-  end
-
-  create_table "universals", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.text "body"
-    t.text "summary"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "user_missions", id: :serial, force: :cascade do |t|
-    t.integer "user_id"
-    t.integer "mission_id"
-    t.integer "lesson_id"
-    t.integer "language_id"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "users", id: :serial, force: :cascade do |t|
-    t.string "email", default: "", null: false
-    t.string "encrypted_password", default: "", null: false
-    t.string "reset_password_token"
-    t.datetime "reset_password_sent_at", precision: nil
-    t.datetime "remember_created_at", precision: nil
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-    t.string "username"
-    t.text "blocked", default: "[]"
-    t.text "friends", default: "[]"
-    t.text "requests", default: "{}"
-    t.text "peers", default: "[]"
-    t.string "stripe_id"
-    t.text "followers", default: "[]"
-    t.text "following", default: "[]"
-    t.datetime "last_read_news", precision: nil
-    t.string "fingerprint"
-    t.integer "ink"
-    t.string "provider", default: "email", null: false
-    t.string "uid", default: "", null: false
-    t.json "tokens", default: "[]"
-    t.index ["email"], name: "index_users_on_email", unique: true
-    t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
-    t.index ["username"], name: "index_users_on_username", unique: true
-  end
-
-  create_table "verbs", id: :serial, force: :cascade do |t|
-    t.string "infinitive"
-    t.string "category"
-    t.string "past"
-    t.string "present"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "videos", id: :serial, force: :cascade do |t|
-    t.string "title"
-    t.string "url"
-    t.string "tags"
-    t.datetime "created_at", precision: nil, null: false
-    t.datetime "updated_at", precision: nil, null: false
-  end
-
-  create_table "word_block_phrases", force: :cascade do |t|
-    t.bigint "word_block_id", null: false
-    t.bigint "phrase_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["phrase_id"], name: "index_word_block_phrases_on_phrase_id"
-    t.index ["word_block_id", "phrase_id"], name: "index_word_block_phrases_on_block_and_phrase", unique: true
-    t.index ["word_block_id"], name: "index_word_block_phrases_on_word_block_id"
-  end
-
-  create_table "word_blocks", force: :cascade do |t|
-    t.string "original", null: false
-    t.string "roman"
-    t.string "english"
-    t.bigint "language_id", null: false
-    t.datetime "created_at", null: false
-    t.datetime "updated_at", null: false
-    t.index ["language_id"], name: "index_word_blocks_on_language_id"
-    t.index ["original"], name: "index_word_blocks_on_original"
-  end
-
-  add_foreign_key "factory_dynamic_inputs", "factories"
-  add_foreign_key "factory_dynamic_inputs", "factory_dynamics"
-  add_foreign_key "factory_dynamic_outputs", "factory_dynamic_inputs"
-  add_foreign_key "factory_material_details", "factory_materials"
-  add_foreign_key "language_traits", "languages"
-  add_foreign_key "language_traits", "universals"
-  add_foreign_key "material_tag_options", "languages"
-  add_foreign_key "material_tags", "factory_materials"
-  add_foreign_key "material_tags", "material_tag_options"
-  add_foreign_key "phrase_dynamics", "factory_dynamics"
-  add_foreign_key "phrase_dynamics", "phrases"
-  add_foreign_key "phrase_factories", "factories"
-  add_foreign_key "phrase_factories", "phrases"
-  add_foreign_key "phrase_input_payloads", "phrase_inputs"
-  add_foreign_key "phrase_input_permits", "factory_materials"
-  add_foreign_key "phrase_input_permits", "material_tag_options"
-  add_foreign_key "phrase_input_permits", "phrase_inputs"
-  add_foreign_key "phrase_inputs_permits", "material_tag_options"
-  add_foreign_key "phrase_inputs_permits", "phrase_inputs"
-  add_foreign_key "phrase_orderings", "phrases"
-  add_foreign_key "phrase_word_banks", "phrases"
-  add_foreign_key "quest_step_lesson_payloads", "quest_step_lessons"
-  add_foreign_key "quest_step_lessons", "lessons"
-  add_foreign_key "quest_step_lessons", "quest_steps"
-  add_foreign_key "quest_steps", "quests"
-  add_foreign_key "quests", "quests"
-  add_foreign_key "traits", "universals"
-  add_foreign_key "word_block_phrases", "phrases"
-  add_foreign_key "word_block_phrases", "word_blocks"
-  add_foreign_key "word_blocks", "languages"
-end
