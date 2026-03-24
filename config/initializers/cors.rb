@@ -3,7 +3,10 @@
 # Avoid CORS issues when API is called from the frontend app.
 # Read more: https://github.com/cyu/rack-cors
 
-# Space- or comma-separated extra origins in ENV["CORS_ORIGINS"] (e.g. production app URL).
+# Space- or comma-separated extra origins in ENV["CORS_ORIGINS"].
+# Production example (Railway + custom domain):
+#   CORS_ORIGINS=https://www.expressfeel.com,https://expressfeel.com
+# Without a matching origin, browsers block cross-origin XHR/fetch (CORS preflight fails).
 default_origins = %w[
   http://localhost:5174
   http://127.0.0.1:5174
