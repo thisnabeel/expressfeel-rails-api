@@ -1,7 +1,7 @@
 class LayerQuizzesController < ApplicationController
   include ApiAuthenticatable
 
-  before_action :authenticate_api_admin!
+  before_action :authenticate_api_admin!, except: [:index, :show]
   before_action :set_layer, only: [:index, :create, :generate_mcq]
   before_action :set_quiz, only: [:show, :update, :destroy]
 
