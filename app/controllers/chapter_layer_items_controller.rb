@@ -2,8 +2,8 @@ class ChapterLayerItemsController < ApplicationController
   include ApiAuthenticatable
 
   before_action :authenticate_api_admin!
-  before_action :set_layer, only: [:create, :reorder, :insert_after]
-  before_action :set_item, only: [:update, :destroy]
+  before_action :set_layer, only: [:create, :reorder, :insert_after, :suggest_hint_translations_batch]
+  before_action :set_item, only: [:update, :destroy, :suggest_hint_translation]
 
   def create
     @item = @layer.chapter_layer_items.new(item_params)
@@ -45,6 +45,58 @@ class ChapterLayerItemsController < ApplicationController
     end
   end
 
+  # POST /chapter_layer_items/:id/suggest_hint_translation
+  # Uses WizardService to suggest a concise English hint for this item body.
+  def suggest_hint_translation
+    source_text = LayerItemHintTranslator.plain_text(@item.body)
+    if source_text.blank?
+      return render json: { error: "Item body is empty" }, status: :unprocessable_entity
+    end
+
+    suggestion = suggestion_for_item(@item, source_text, prior_passage_pairs: nil)
+    if suggestion.blank?
+      return render json: { error: "Item body is empty" }, status: :unprocessable_entity
+    end
+
+    render json: { suggestion: suggestion }
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # POST /chapter_layers/:chapter_layer_id/chapter_layer_items/suggest_hint_translations_batch
+  # body: { start_item_id: 123, count: 20, prior_passage: [ { source: "...", translation: "..." }, ... ] }
+  # Optional prior_passage = all earlier items in the layer (in order) so later batches stay consistent.
+  # Within one request, each item also sees translations produced earlier in the same batch.
+  def suggest_hint_translations_batch
+    start_item = @layer.chapter_layer_items.find(params.require(:start_item_id))
+    requested = params[:count].to_i
+    count = requested > 0 ? [requested, 20].min : 20
+
+    items = @layer.chapter_layer_items
+      .where("position >= ?", start_item.position)
+      .order(:position, :id)
+      .limit(count)
+
+    accumulated = prior_passage_pairs_from_params
+    suggestions = []
+    items.each do |item|
+      source_text = LayerItemHintTranslator.plain_text(item.body)
+      next if source_text.blank?
+
+      suggestion = suggestion_for_item(item, source_text, prior_passage_pairs: accumulated)
+      next if suggestion.blank?
+
+      suggestions << { id: item.id, suggestion: suggestion }
+      accumulated << { "source" => source_text, "translation" => suggestion }
+    end
+
+    render json: { suggestions: suggestions }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "start_item_id not found in this layer" }, status: :unprocessable_entity
+  rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
   def destroy
     @item.destroy!
     head :no_content
@@ -78,5 +130,33 @@ class ChapterLayerItemsController < ApplicationController
 
   def item_params
     params.require(:chapter_layer_item).permit(:body, :style, :hint, :position)
+  end
+
+  def prior_passage_pairs_from_params
+    raw = params[:prior_passage]
+    return [] unless raw.is_a?(Array)
+
+    raw.filter_map do |h|
+      next unless h.is_a?(Hash)
+
+      h = h.stringify_keys
+      src = h["source"].to_s.gsub(/\s+/, " ").strip
+      next if src.blank?
+
+      tr = h["translation"].to_s.gsub(/\s+/, " ").strip
+      { "source" => src, "translation" => tr }
+    end
+  end
+
+  def suggestion_for_item(item, source_text, prior_passage_pairs:)
+    language_title = item.chapter_layer&.chapter&.language&.title.to_s.presence || "the source language"
+    previous_lines = prior_passage_pairs.present? ? nil : LayerItemHintTranslator.previous_source_lines_for_item(item, limit: 3)
+
+    LayerItemHintTranslator.translate(
+      source_text,
+      language_title: language_title,
+      prior_passage_pairs: prior_passage_pairs,
+      previous_source_lines: previous_lines
+    )
   end
 end

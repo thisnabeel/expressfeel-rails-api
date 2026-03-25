@@ -2,6 +2,7 @@ class ChapterLayer < ApplicationRecord
   belongs_to :chapter
   # Bulk delete child items in one SQL statement when a layer is deleted.
   has_many :chapter_layer_items, dependent: :delete_all
+  has_many :layer_quizzes, dependent: :delete_all
 
   validates :position, presence: true, numericality: { only_integer: true }
 

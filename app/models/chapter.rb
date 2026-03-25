@@ -9,6 +9,7 @@ class Chapter < ApplicationRecord
   validate :parent_same_language
   validate :parent_not_cyclic
 
+  after_create :create_default_layer_named_name
   after_commit :renumber_affected_families, on: [:create, :update]
   after_destroy_commit :renumber_former_siblings
 
@@ -61,6 +62,15 @@ class Chapter < ApplicationRecord
   end
 
   private
+
+  def create_default_layer_named_name
+    chapter_layers.create!(
+      title: "main",
+      active: true,
+      is_default: true,
+      position: 0
+    )
+  end
 
   def parent_same_language
     return if chapter_id.blank?

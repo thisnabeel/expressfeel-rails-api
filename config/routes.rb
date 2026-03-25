@@ -140,9 +140,27 @@ Rails.application.routes.draw do
 
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items" => "chapter_layer_items#create"
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items/insert_after" => "chapter_layer_items#insert_after"
+  post "/chapter_layers/:chapter_layer_id/chapter_layer_items/suggest_hint_translations_batch" => "chapter_layer_items#suggest_hint_translations_batch"
+  post "/chapter_layer_items/:id/suggest_hint_translation" => "chapter_layer_items#suggest_hint_translation"
   patch "/chapter_layer_items/:id" => "chapter_layer_items#update"
   delete "/chapter_layer_items/:id" => "chapter_layer_items#destroy"
   patch "/chapter_layers/:chapter_layer_id/chapter_layer_items/reorder" => "chapter_layer_items#reorder"
+
+  # Layer quizzes (admin CRUD + generation)
+  get "/chapter_layers/:chapter_layer_id/layer_quizzes" => "layer_quizzes#index"
+  post "/chapter_layers/:chapter_layer_id/layer_quizzes" => "layer_quizzes#create"
+  post "/chapter_layers/:chapter_layer_id/layer_quizzes/generate_mcq" => "layer_quizzes#generate_mcq"
+  get "/layer_quizzes/:id" => "layer_quizzes#show"
+  patch "/layer_quizzes/:id" => "layer_quizzes#update"
+  delete "/layer_quizzes/:id" => "layer_quizzes#destroy"
+
+  post "/layer_quizzes/:layer_quiz_id/layer_quiz_questions" => "layer_quiz_questions#create"
+  patch "/layer_quiz_questions/:id" => "layer_quiz_questions#update"
+  delete "/layer_quiz_questions/:id" => "layer_quiz_questions#destroy"
+
+  post "/layer_quiz_questions/:layer_quiz_question_id/layer_item_quiz_answers" => "layer_item_quiz_answers#create"
+  patch "/layer_item_quiz_answers/:id" => "layer_item_quiz_answers#update"
+  delete "/layer_item_quiz_answers/:id" => "layer_item_quiz_answers#destroy"
 
   post "/factory_dynamics/build" => "factory_dynamics#build"
   get "languages/:id/factory_dynamics" => "factory_dynamics#by_language"

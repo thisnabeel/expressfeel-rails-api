@@ -10,8 +10,10 @@ class ChaptersController < ApplicationController
   end
 
   def create
+    initial_body = params.dig(:chapter, :initial_body)
     @chapter = @language.chapters.new(chapter_params)
     if @chapter.save
+      process_initial_chapter_body(@chapter, initial_body)
       render json: @chapter.as_json, status: :created
     else
       render json: @chapter.errors, status: :unprocessable_entity
@@ -115,6 +117,83 @@ class ChaptersController < ApplicationController
   end
 
   private
+
+  # Optional HTML body: split into items (same rules as split_single_item), insert into a new
+  # layer "Passage" and set it as the default tab. The auto-created "main" layer stays (empty).
+  # Then fill English hints via WizardService in order (cumulative context).
+  def process_initial_chapter_body(chapter, html)
+    return if html.blank?
+
+    plain = LayerItemHintTranslator.plain_text(html)
+    return if plain.blank?
+
+    pieces = split_item_html(html.to_s, fallback_style: "inline")
+    return if pieces.empty?
+
+    target_layer = nil
+    Chapter.transaction do
+      chapter.reload
+      max_pos = chapter.chapter_layers.maximum(:position)
+      next_pos = max_pos.nil? ? 0 : max_pos + 1
+
+      target_layer = chapter.chapter_layers.create!(
+        title: "Passage",
+        active: true,
+        is_default: true,
+        position: next_pos
+      )
+      chapter.chapter_layers.where.not(id: target_layer.id).update_all(is_default: false)
+
+      now = Time.current
+      rows = pieces.each_with_index.map do |p, idx|
+        {
+          chapter_layer_id: target_layer.id,
+          body: p[:body],
+          style: p[:style],
+          hint: "",
+          position: idx,
+          created_at: now,
+          updated_at: now
+        }
+      end
+
+      ChapterLayerItem.insert_all!(rows) if rows.any?
+    end
+
+    target_layer&.reload
+    fill_initial_layer_hints(target_layer, chapter.language) if target_layer
+  rescue StandardError => e
+    Rails.logger.error("[process_initial_chapter_body] chapter #{chapter&.id}: #{e.class}: #{e.message}")
+  end
+
+  def fill_initial_layer_hints(layer, language)
+    return unless layer && language
+
+    language_title = language.title.to_s.presence || "the source language"
+    accumulated = []
+
+    layer.chapter_layer_items.order(:position, :id).each do |item|
+      next if %w[line_break hr].include?(item.style)
+
+      source_text = LayerItemHintTranslator.plain_text(item.body)
+      next if source_text.blank?
+
+      hint = begin
+        LayerItemHintTranslator.translate(
+          source_text,
+          language_title: language_title,
+          prior_passage_pairs: accumulated,
+          previous_source_lines: nil
+        )
+      rescue StandardError => e
+        Rails.logger.error("[fill_initial_layer_hints] item #{item.id}: #{e.class}: #{e.message}")
+        ""
+      end
+
+      item.update_columns(hint: hint, updated_at: Time.current) if hint.present?
+      accumulated << { "source" => source_text, "translation" => hint }
+    end
+  end
 
   def set_language
     @language = Language.find(params[:language_id])
