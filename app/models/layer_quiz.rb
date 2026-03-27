@@ -1,6 +1,6 @@
 class LayerQuiz < ApplicationRecord
   belongs_to :chapter_layer
-  has_many :layer_quiz_questions, dependent: :delete_all
+  has_many :layer_quiz_questions, dependent: :destroy
 
   validates :title, presence: true
 

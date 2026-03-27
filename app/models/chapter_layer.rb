@@ -8,19 +8,28 @@ class ChapterLayer < ApplicationRecord
 
   before_validation :assign_default_title
   before_validation :clear_other_defaults, if: -> { is_default? && is_default_changed? }
+  after_commit :refresh_chapter_default_layer_items_count_cache, on: [:create, :update, :destroy]
 
   scope :ordered, -> { order(:position, :id) }
   scope :active_only, -> { where(active: true) }
 
-  def as_json_for_viewer(admin:)
+  def as_json_for_viewer(admin:, include_items: true, items_offset: 0, items_limit: nil)
+    total_count = chapter_layer_items.count
     scope = chapter_layer_items.order(:position, :id)
+    scope = scope.offset(items_offset.to_i) if include_items && items_offset.to_i.positive?
+    scope = scope.limit(items_limit.to_i) if include_items && items_limit.present? && items_limit.to_i.positive?
+    items = include_items ? scope.map(&:as_json) : []
+    loaded_count = items.length
+    next_offset = include_items ? items_offset.to_i + loaded_count : 0
     {
       id: id,
       title: title,
       active: active,
       is_default: is_default,
       position: position,
-      chapter_layer_items: scope.map(&:as_json)
+      chapter_layer_items: items,
+      chapter_layer_items_count: total_count,
+      chapter_layer_items_has_more: include_items ? (next_offset < total_count) : false
     }
   end
 
@@ -32,5 +41,9 @@ class ChapterLayer < ApplicationRecord
 
   def clear_other_defaults
     chapter.chapter_layers.where.not(id: id).update_all(is_default: false)
+  end
+
+  def refresh_chapter_default_layer_items_count_cache
+    chapter&.refresh_default_layer_caches!
   end
 end

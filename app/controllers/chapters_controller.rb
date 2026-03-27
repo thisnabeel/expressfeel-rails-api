@@ -1,9 +1,9 @@
 class ChaptersController < ApplicationController
   include ApiAuthenticatable
 
-  before_action :set_language, only: [:for_language, :create]
+  before_action :set_language, only: [:for_language, :create, :wizard_movie_summary]
   before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item]
-  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :move, :split_single_item]
+  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :move, :split_single_item, :wizard_movie_summary]
 
   def for_language
     render json: { chapters: Chapter.tree_for_language(@language.id) }
@@ -25,13 +25,43 @@ class ChaptersController < ApplicationController
     admin = @api_user&.admin?
     layers_rel = @chapter.chapter_layers.ordered
     layers_rel = layers_rel.active_only unless admin
+    per_page = [[params[:items_per_page].to_i, 1].max, 200].min
+    per_page = 80 if params[:items_per_page].blank?
+    page = [params[:items_page].to_i, 1].max
+    pagination_requested = params[:items_per_page].present? || params[:items_page].present? || params[:items_layer_id].present?
+    default_layer_id = layers_rel.find(&:is_default)&.id || layers_rel.first&.id
+    paged_layer_id = if pagination_requested
+      requested = params[:items_layer_id].presence&.to_i
+      requested.presence || default_layer_id
+    end
+
+    chapter_layers_json = layers_rel.map do |l|
+      if pagination_requested
+        include_items = l.id == paged_layer_id
+        offset = include_items ? (page - 1) * per_page : 0
+        limit = include_items ? per_page : 0
+        l.as_json_for_viewer(
+          admin: admin,
+          include_items: include_items,
+          items_offset: offset,
+          items_limit: limit
+        )
+      else
+        l.as_json_for_viewer(admin: admin)
+      end
+    end
+
     render json: {
-      chapter: @chapter.as_json(only: %i[id title description chapter_id position language_id]),
+      chapter: @chapter.as_json(only: %i[id title description chapter_mode chapter_id position language_id]),
+      chapter_images: @chapter.chapter_images.order(:position, :id).as_json(only: %i[id chapter_id image_url original_filename position]),
       language: {
         id: @chapter.language_id,
         direction: @chapter.language&.direction
       },
-      chapter_layers: layers_rel.map { |l| l.as_json_for_viewer(admin: admin) },
+      chapter_layers: chapter_layers_json,
+      items_layer_id: paged_layer_id,
+      items_page: page,
+      items_per_page: per_page,
       viewer_is_admin: admin == true
     }
   end
@@ -114,6 +144,20 @@ class ChaptersController < ApplicationController
     render json: { layer_id: new_layer.id, created_items_count: rows.length }, status: :created
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Source item/layer not found" }, status: :unprocessable_entity
+  end
+
+  def wizard_movie_summary
+    title = params[:title].to_s.strip
+    return render json: { error: "title is required" }, status: :unprocessable_entity if title.blank?
+
+    language_title = @language.title.to_s.presence || "the language"
+    summary = generate_long_movie_summary(language_title: language_title, title: title)
+    return render json: { error: "Could not generate movie summary right now. Please try again." }, status: :unprocessable_entity if wizard_refusal?(summary)
+
+    render json: { body: summary }
+  rescue StandardError => e
+    Rails.logger.error("[wizard_movie_summary] language #{@language&.id}: #{e.class}: #{e.message}")
+    render json: { error: "Could not generate movie summary." }, status: :unprocessable_entity
   end
 
   private
@@ -199,12 +243,82 @@ class ChaptersController < ApplicationController
     @language = Language.find(params[:language_id])
   end
 
+  def ask_wizard_fresh_text(prompt)
+    session_id = SecureRandom.uuid
+    client = OpenAI::Client.new(access_token: ENV["OPENAI_ACCESS_TOKEN"])
+    response = client.chat(
+      parameters: {
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "system",
+            content: "This is an independent new chat session id #{session_id}. Ignore any prior conversation."
+          },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        response_format: { type: "text" }
+      }
+    )
+    response.dig("choices", 0, "message", "content").to_s.strip
+  end
+
+  def generate_long_movie_summary(language_title:, title:)
+    parts = []
+    section_specs = [
+      "Part 1 of 3: opening setup, key characters, and early plot developments.",
+      "Part 2 of 3: middle arc, escalating conflict, and turning points.",
+      "Part 3 of 3: late arc, climax, ending, and aftermath."
+    ]
+
+    section_specs.each_with_index do |section_instruction, idx|
+      previous = parts.join("\n\n")
+      prompt = <<~PROMPT
+        Write in #{language_title}.
+        Movie: #{title}
+        #{section_instruction}
+        Target length for this part: around 650-850 words.
+        Output only plain paragraph text. No markdown. No bullets. No intro/disclaimer.
+        Do not repeat prior parts.
+        Prior parts for continuity:
+        #{previous.present? ? previous : "(none yet)"}
+      PROMPT
+
+      part = ask_wizard_fresh_text(prompt)
+      if wizard_refusal?(part)
+        retry_prompt = <<~PROMPT
+          Provide only the requested narrative recap section in #{language_title} for the movie #{title}.
+          #{section_instruction}
+          Plain paragraphs only.
+        PROMPT
+        part = ask_wizard_fresh_text(retry_prompt)
+      end
+      next if wizard_refusal?(part) || part.blank?
+
+      parts << part.strip
+      Rails.logger.info("[wizard_movie_summary] generated part #{idx + 1}/3 length=#{part.length}")
+    end
+
+    parts.join("\n\n")
+  end
+
+  def wizard_refusal?(text)
+    s = text.to_s.downcase
+    return true if s.blank?
+
+    s.include?("i can't") ||
+      s.include?("i cannot") ||
+      s.include?("i'm sorry") ||
+      s.include?("sorry, but i can't") ||
+      s.include?("however, i can")
+  end
+
   def set_chapter
     @chapter = Chapter.find(params[:id])
   end
 
   def chapter_params
-    params.require(:chapter).permit(:title, :description, :chapter_id, :position)
+    params.require(:chapter).permit(:title, :description, :chapter_mode, :chapter_id, :position)
   end
 
   # Converts rich HTML into many items preserving block/list structure.

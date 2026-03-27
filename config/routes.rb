@@ -127,12 +127,23 @@ Rails.application.routes.draw do
 
   get "/languages/:language_id/chapters" => "chapters#for_language"
   post "/languages/:language_id/chapters" => "chapters#create"
+  post "/languages/:language_id/chapters/wizard_movie_summary" => "chapters#wizard_movie_summary"
+  post "/wizard/extract_manga_text" => "wizard#extract_manga_text"
   resources :chapters, only: [:show, :update, :destroy] do
     member do
       post :move
       post :split_single_item
     end
   end
+  get "/chapters/:chapter_id/chapter_images" => "chapter_images#index"
+  post "/chapters/:chapter_id/chapter_images" => "chapter_images#create"
+  get "/chapter_images/:id/proxy" => "chapter_images#proxy"
+  patch "/chapter_images/:id" => "chapter_images#update"
+  delete "/chapter_images/:id" => "chapter_images#destroy"
+  get "/chapter_images/:chapter_image_id/overlays" => "chapter_image_overlays#index"
+  post "/chapter_images/:chapter_image_id/overlays" => "chapter_image_overlays#create"
+  patch "/chapter_image_overlays/:id" => "chapter_image_overlays#update"
+  delete "/chapter_image_overlays/:id" => "chapter_image_overlays#destroy"
 
   post "/chapters/:chapter_id/chapter_layers" => "chapter_layers#create"
   patch "/chapter_layers/:id" => "chapter_layers#update"

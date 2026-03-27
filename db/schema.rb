@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_25_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_26_192000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -106,6 +106,32 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_25_120000) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
+  create_table "chapter_image_overlays", force: :cascade do |t|
+    t.bigint "chapter_image_id", null: false
+    t.string "overlay_type", null: false
+    t.jsonb "shape", default: {}, null: false
+    t.string "label"
+    t.text "original_arabic"
+    t.text "translation"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_image_id", "position"], name: "index_chapter_image_overlays_on_chapter_image_id_and_position"
+    t.index ["chapter_image_id"], name: "index_chapter_image_overlays_on_chapter_image_id"
+  end
+
+  create_table "chapter_images", force: :cascade do |t|
+    t.bigint "chapter_id", null: false
+    t.string "image_url", null: false
+    t.string "original_filename"
+    t.integer "position", default: 0, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_id", "position"], name: "index_chapter_images_on_chapter_id_and_position"
+    t.index ["chapter_id"], name: "index_chapter_images_on_chapter_id"
+  end
+
   create_table "chapter_layer_items", force: :cascade do |t|
     t.bigint "chapter_layer_id", null: false
     t.text "body"
@@ -138,6 +164,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_25_120000) do
     t.bigint "language_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.integer "default_layer_items_count", default: 0, null: false
+    t.integer "default_layer_quiz_questions_count", default: 0, null: false
+    t.string "chapter_mode", default: "text", null: false
     t.index ["chapter_id"], name: "index_chapters_on_chapter_id"
     t.index ["language_id", "chapter_id", "position"], name: "index_chapters_on_language_id_and_chapter_id_and_position"
     t.index ["language_id"], name: "index_chapters_on_language_id"
@@ -824,6 +853,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_25_120000) do
     t.index ["original"], name: "index_word_blocks_on_original"
   end
 
+  add_foreign_key "chapter_image_overlays", "chapter_images"
+  add_foreign_key "chapter_images", "chapters"
   add_foreign_key "chapter_layer_items", "chapter_layers"
   add_foreign_key "chapter_layers", "chapters"
   add_foreign_key "chapters", "chapters"

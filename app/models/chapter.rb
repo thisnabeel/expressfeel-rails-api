@@ -3,9 +3,11 @@ class Chapter < ApplicationRecord
   belongs_to :parent, class_name: "Chapter", optional: true, foreign_key: :chapter_id, inverse_of: :children
   has_many :children, class_name: "Chapter", foreign_key: :chapter_id, dependent: :destroy, inverse_of: :parent
   has_many :chapter_layers, dependent: :destroy
+  has_many :chapter_images, dependent: :destroy
 
   validates :title, presence: true
   validates :position, presence: true, numericality: { only_integer: true }
+  validates :chapter_mode, inclusion: { in: %w[text images] }
   validate :parent_same_language
   validate :parent_not_cyclic
 
@@ -16,17 +18,30 @@ class Chapter < ApplicationRecord
   scope :roots, -> { where(chapter_id: nil) }
 
   def self.tree_for_language(language_id)
-    rows = where(language_id: language_id).order(:position).to_a
+    rows = where(language_id: language_id).order(:position).includes(:chapter_layers).to_a
     by_parent = rows.group_by(&:chapter_id)
     build = lambda do |parent_id|
       (by_parent[parent_id] || []).map do |ch|
+        default_layer = ch.chapter_layers.find(&:is_default)
+        default_layer_id = default_layer&.id
+        items_count = ch.default_layer_items_count.to_i
+        layers_count = ch.chapter_layers.size
+        quiz_count = ch.default_layer_quiz_questions_count.to_i
+        # Tiny chapters (single layer, 0–1 items) are not expected to have full lists/quizzes yet.
+        skip_small_chapter_warnings = layers_count < 2 && items_count < 2
         {
           id: ch.id,
           title: ch.title,
           description: ch.description,
+          chapter_mode: ch.chapter_mode,
           chapter_id: ch.chapter_id,
           position: ch.position,
           language_id: ch.language_id,
+          default_layer_id: default_layer_id,
+          default_layer_items_count: items_count,
+          default_layer_items_insufficient: !skip_small_chapter_warnings && items_count <= 1,
+          default_layer_quiz_questions_count: quiz_count,
+          default_layer_quiz_questions_missing: !skip_small_chapter_warnings && quiz_count <= 0,
           children: build.call(ch.id)
         }
       end
@@ -59,6 +74,24 @@ class Chapter < ApplicationRecord
 
   def renumber_former_siblings
     self.class.renumber_siblings!(language_id, chapter_id)
+  end
+
+  def refresh_default_layer_caches!
+    default_layer_id = chapter_layers.where(is_default: true).pick(:id)
+    items_count = default_layer_id ? ChapterLayerItem.where(chapter_layer_id: default_layer_id).count : 0
+    quiz_questions_count = if default_layer_id
+      LayerQuizQuestion.joins(:layer_quiz).where(layer_quizzes: { chapter_layer_id: default_layer_id }).count
+    else
+      0
+    end
+    update_columns(
+      default_layer_items_count: items_count,
+      default_layer_quiz_questions_count: quiz_questions_count
+    )
+  end
+
+  def refresh_default_layer_items_count_cache!
+    refresh_default_layer_caches!
   end
 
   private

@@ -56,7 +56,7 @@ class LayerQuizzesController < ApplicationController
       # wipe existing MCQ questions+answers
       ids = quiz.layer_quiz_questions.pluck(:id)
       LayerItemQuizAnswer.where(layer_quiz_question_id: ids).delete_all if ids.any?
-      quiz.layer_quiz_questions.delete_all
+      quiz.layer_quiz_questions.destroy_all
 
       q_rows = []
       a_rows = []
@@ -105,6 +105,7 @@ class LayerQuizzesController < ApplicationController
       LayerItemQuizAnswer.insert_all!(a_rows) if a_rows.any?
     end
 
+    @layer.chapter&.refresh_default_layer_caches!
     render json: quiz.reload.as_json_for_admin, status: :created
   rescue StandardError => e
     render json: { error: e.message }, status: :unprocessable_entity
