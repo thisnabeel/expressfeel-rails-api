@@ -8,6 +8,7 @@ class Chapter < ApplicationRecord
   validates :title, presence: true
   validates :position, presence: true, numericality: { only_integer: true }
   validates :chapter_mode, inclusion: { in: %w[text images] }
+  validates :tier, inclusion: { in: %w[Free Premium] }
   validate :parent_same_language
   validate :parent_not_cyclic
 
@@ -34,6 +35,7 @@ class Chapter < ApplicationRecord
           title: ch.title,
           description: ch.description,
           chapter_mode: ch.chapter_mode,
+          tier: ch.tier,
           chapter_id: ch.chapter_id,
           position: ch.position,
           language_id: ch.language_id,

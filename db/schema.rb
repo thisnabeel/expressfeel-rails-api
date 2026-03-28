@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_26_192000) do
+ActiveRecord::Schema[7.1].define(version: 2026_03_27_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -167,6 +167,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_26_192000) do
     t.integer "default_layer_items_count", default: 0, null: false
     t.integer "default_layer_quiz_questions_count", default: 0, null: false
     t.string "chapter_mode", default: "text", null: false
+    t.string "tier", default: "Premium", null: false
     t.index ["chapter_id"], name: "index_chapters_on_chapter_id"
     t.index ["language_id", "chapter_id", "position"], name: "index_chapters_on_language_id_and_chapter_id_and_position"
     t.index ["language_id"], name: "index_chapters_on_language_id"
