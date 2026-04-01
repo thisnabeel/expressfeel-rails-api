@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_03_31_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -382,6 +382,18 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_31_120000) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
+  create_table "language_chapter_sublayers", force: :cascade do |t|
+    t.bigint "language_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "wizarding_instructions"
+    t.index ["language_id", "position"], name: "index_lang_chapter_sublayers_on_lang_and_position"
+    t.index ["language_id"], name: "index_language_chapter_sublayers_on_language_id"
+  end
+
   create_table "language_nouns", id: :serial, force: :cascade do |t|
     t.text "folder"
     t.integer "noun_id"
@@ -751,6 +763,20 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_31_120000) do
     t.integer "machine_id"
   end
 
+  create_table "sub_layer_items", force: :cascade do |t|
+    t.bigint "language_chapter_sublayer_id", null: false
+    t.bigint "language_id", null: false
+    t.text "body"
+    t.text "hint"
+    t.string "sublayer_itemable_type", null: false
+    t.bigint "sublayer_itemable_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_chapter_sublayer_id"], name: "index_sub_layer_items_on_language_chapter_sublayer_id"
+    t.index ["language_id"], name: "index_sub_layer_items_on_language_id"
+    t.index ["sublayer_itemable_type", "sublayer_itemable_id"], name: "index_sub_layer_items_on_itemable"
+  end
+
   create_table "subscriptions", id: :serial, force: :cascade do |t|
     t.string "plan_id"
     t.integer "user_id"
@@ -865,6 +891,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_31_120000) do
   add_foreign_key "factory_dynamic_inputs", "factory_dynamics"
   add_foreign_key "factory_dynamic_outputs", "factory_dynamic_inputs"
   add_foreign_key "factory_material_details", "factory_materials"
+  add_foreign_key "language_chapter_sublayers", "languages"
   add_foreign_key "language_traits", "languages"
   add_foreign_key "language_traits", "universals"
   add_foreign_key "layer_item_quiz_answers", "layer_quiz_questions"
@@ -890,6 +917,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_03_31_120000) do
   add_foreign_key "quest_step_lessons", "quest_steps"
   add_foreign_key "quest_steps", "quests"
   add_foreign_key "quests", "quests"
+  add_foreign_key "sub_layer_items", "language_chapter_sublayers"
+  add_foreign_key "sub_layer_items", "languages"
   add_foreign_key "traits", "universals"
   add_foreign_key "word_block_phrases", "phrases"
   add_foreign_key "word_block_phrases", "word_blocks"

@@ -86,6 +86,40 @@ class WizardController < ApplicationController
     render json: { error: "Could not translate right now." }, status: :unprocessable_entity
   end
 
+  # Runs arbitrary wizarding instructions and returns the generated output text.
+  def apply_instruction
+    text = params[:text].to_s.strip
+    body = params[:body].to_s
+    hint = params[:hint].to_s
+    return render json: { error: "text is required" }, status: :unprocessable_entity if text.blank?
+    return render json: { error: "text is too long (max 8000 characters)" }, status: :unprocessable_entity if text.length > 8000
+
+    prompt = <<~PROMPT
+      Follow the user's instruction exactly and produce the requested output.
+      Return ONLY a JSON object with one key:
+      - "output": the final generated text result.
+      No explanations or extra keys.
+
+      Instruction:
+      """
+      #{text}
+      """
+
+      Additional context:
+      - Body: #{body}
+      - Hint: #{hint}
+    PROMPT
+
+    result = WizardService.ask(prompt, "json_object")
+    output = result["output"].presence || result["result"].presence || result["text"].presence || ""
+    output = result["raw_response"].to_s.strip if output.blank? && result["raw_response"].present?
+
+    render json: { output: output.to_s }
+  rescue StandardError => e
+    Rails.logger.error("[wizard_apply_instruction] #{e.class}: #{e.message}")
+    render json: { error: "Could not apply instruction right now." }, status: :unprocessable_entity
+  end
+
   private
 
   def normalize_result(result)

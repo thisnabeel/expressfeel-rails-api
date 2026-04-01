@@ -18,7 +18,25 @@ class ChapterLayer < ApplicationRecord
     scope = chapter_layer_items.order(:position, :id)
     scope = scope.offset(items_offset.to_i) if include_items && items_offset.to_i.positive?
     scope = scope.limit(items_limit.to_i) if include_items && items_limit.present? && items_limit.to_i.positive?
-    items = include_items ? scope.map(&:as_json) : []
+    items = if include_items
+      scope.includes(sub_layer_items: :language_chapter_sublayer).map do |item|
+        sub_layer_items_json = item.sub_layer_items.map do |sli|
+          {
+            id: sli.id,
+            language_chapter_sublayer_id: sli.language_chapter_sublayer_id,
+            sublayer_name: sli.language_chapter_sublayer&.title,
+            body: sli.body,
+            hint: sli.hint
+          }
+        end
+
+        item.as_json.merge(
+          "sub_layer_items" => sub_layer_items_json
+        )
+      end
+    else
+      []
+    end
     loaded_count = items.length
     next_offset = include_items ? items_offset.to_i + loaded_count : 0
     {

@@ -1,5 +1,6 @@
 class ChapterLayerItem < ApplicationRecord
   belongs_to :chapter_layer
+  has_many :sub_layer_items, as: :sublayer_itemable, dependent: :destroy
 
   STYLES = %w[inline header block quote bullet ordered line_break hr].freeze
 

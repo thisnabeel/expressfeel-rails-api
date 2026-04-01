@@ -128,8 +128,13 @@ Rails.application.routes.draw do
   get "/languages/:language_id/chapters" => "chapters#for_language"
   post "/languages/:language_id/chapters" => "chapters#create"
   post "/languages/:language_id/chapters/wizard_movie_summary" => "chapters#wizard_movie_summary"
+  get "/languages/:language_id/chapter_sublayers" => "language_chapter_sublayers#index"
+  post "/languages/:language_id/chapter_sublayers" => "language_chapter_sublayers#create"
+  patch "/chapter_sublayers/:id" => "language_chapter_sublayers#update"
+  delete "/chapter_sublayers/:id" => "language_chapter_sublayers#destroy"
   post "/wizard/extract_manga_text" => "wizard#extract_manga_text"
   post "/wizard/translate_text" => "wizard#translate_text"
+  post "/wizard/apply_instruction" => "wizard#apply_instruction"
   resources :chapters, only: [:show, :update, :destroy] do
     member do
       post :move
@@ -156,6 +161,7 @@ Rails.application.routes.draw do
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items/insert_after" => "chapter_layer_items#insert_after"
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items/suggest_hint_translations_batch" => "chapter_layer_items#suggest_hint_translations_batch"
   post "/chapter_layer_items/:id/suggest_hint_translation" => "chapter_layer_items#suggest_hint_translation"
+  patch "/chapter_layer_items/:id/sub_layer_item" => "chapter_layer_items#upsert_sub_layer_item"
   patch "/chapter_layer_items/:id" => "chapter_layer_items#update"
   delete "/chapter_layer_items/:id" => "chapter_layer_items#destroy"
   patch "/chapter_layers/:chapter_layer_id/chapter_layer_items/reorder" => "chapter_layer_items#reorder"

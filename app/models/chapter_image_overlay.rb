@@ -1,5 +1,6 @@
 class ChapterImageOverlay < ApplicationRecord
   belongs_to :chapter_image
+  has_many :sub_layer_items, as: :sublayer_itemable, dependent: :destroy
 
   ALLOWED_ROTATIONS = [0, 90, 180, 270].freeze
 

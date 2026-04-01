@@ -3,7 +3,7 @@ class ChapterLayerItemsController < ApplicationController
 
   before_action :authenticate_api_admin!
   before_action :set_layer, only: [:create, :reorder, :insert_after, :suggest_hint_translations_batch]
-  before_action :set_item, only: [:update, :destroy, :suggest_hint_translation]
+  before_action :set_item, only: [:update, :destroy, :suggest_hint_translation, :upsert_sub_layer_item]
 
   def create
     @item = @layer.chapter_layer_items.new(item_params)
@@ -43,6 +43,39 @@ class ChapterLayerItemsController < ApplicationController
     else
       render json: @item.errors, status: :unprocessable_entity
     end
+  end
+
+  # PATCH /chapter_layer_items/:id/sub_layer_item
+  # body: { chapter_sublayer_id: Integer, body: String, hint: optional String }
+  def upsert_sub_layer_item
+    sublayer = LanguageChapterSublayer.find(params.require(:chapter_sublayer_id))
+    if @item.chapter_layer&.chapter&.language_id != sublayer.language_id
+      return render json: { error: "Sublayer language does not match this chapter item language" }, status: :unprocessable_entity
+    end
+
+    sli = SubLayerItem.find_or_initialize_by(
+      language_chapter_sublayer_id: sublayer.id,
+      sublayer_itemable: @item
+    )
+    sli.language_id = sublayer.language_id
+    sli.body = params[:body].to_s
+    sli.hint = params[:hint].to_s if params.key?(:hint)
+    sli.save!
+
+    render json: {
+      sub_layer_item: {
+        id: sli.id,
+        language_chapter_sublayer_id: sli.language_chapter_sublayer_id,
+        sublayer_itemable_type: sli.sublayer_itemable_type,
+        sublayer_itemable_id: sli.sublayer_itemable_id,
+        body: sli.body,
+        hint: sli.hint
+      }
+    }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "chapter_sublayer_id not found" }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
   end
 
   # POST /chapter_layer_items/:id/suggest_hint_translation
