@@ -1,9 +1,14 @@
+require "fileutils"
+require "json"
+require "net/http"
+require "tmpdir"
+
 class ChaptersController < ApplicationController
   include ApiAuthenticatable
 
   before_action :set_language, only: [:for_language, :create, :wizard_movie_summary]
-  before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item]
-  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :move, :split_single_item, :wizard_movie_summary]
+  before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item, :bubbles_zip]
+  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :move, :split_single_item, :wizard_movie_summary, :bubbles_zip]
 
   def for_language
     render json: { chapters: Chapter.tree_for_language(@language.id) }
@@ -160,7 +165,86 @@ class ChaptersController < ApplicationController
     render json: { error: "Could not generate movie summary." }, status: :unprocessable_entity
   end
 
+  # GET /chapters/:id/bubbles_zip
+  # Produces indexed file pairs for pages with bubbles only:
+  #   001.jpg + 001.json, 002.png + 002.json, ...
+  def bubbles_zip
+    images = @chapter.chapter_images.includes(:chapter_image_overlays).order(:position, :id)
+    pages = images.select { |img| img.chapter_image_overlays.any? }
+    return render json: { error: "No pages with bubbles to export." }, status: :unprocessable_entity if pages.empty?
+
+    zip_filename = "chapter-#{@chapter.id}-bubble-pages.zip"
+    zip_data = nil
+
+    Dir.mktmpdir("chapter-#{@chapter.id}-bubbles-") do |dir|
+      pages.each_with_index do |img, idx|
+        base = format("%03d", idx + 1)
+        ext = export_image_extension(img.image_url)
+        image_bytes, mime_type = download_remote_image(img.image_url)
+        File.binwrite(File.join(dir, "#{base}#{ext}"), image_bytes)
+
+        overlays_payload = img.chapter_image_overlays.order(:position, :id).map do |o|
+          {
+            id: o.id,
+            overlay_type: o.overlay_type,
+            label: o.label,
+            position: o.position,
+            rotation: o.rotation,
+            shape: o.shape,
+            original: o.original,
+            translation: o.translation
+          }
+        end
+
+        page_payload = {
+          index: idx + 1,
+          chapter_id: @chapter.id,
+          chapter_image_id: img.id,
+          source_image_url: img.image_url,
+          source_original_filename: img.original_filename,
+          image_file: "#{base}#{ext}",
+          image_mime_type: mime_type,
+          overlays_count: overlays_payload.length,
+          overlays: overlays_payload
+        }
+        File.write(File.join(dir, "#{base}.json"), JSON.pretty_generate(page_payload))
+      end
+
+      zip_path = File.join(Dir.tmpdir, "chapter-#{@chapter.id}-bubble-pages-#{SecureRandom.hex(6)}.zip")
+      files_to_zip = Dir.glob(File.join(dir, "*")).sort
+      ok = system("zip", "-j", "-q", zip_path, *files_to_zip)
+      raise "zip command failed" unless ok && File.exist?(zip_path)
+
+      zip_data = File.binread(zip_path)
+      FileUtils.rm_f(zip_path)
+    end
+
+    send_data zip_data, filename: zip_filename, type: "application/zip", disposition: "attachment"
+  rescue StandardError => e
+    Rails.logger.error("[chapters_bubbles_zip] chapter #{@chapter&.id}: #{e.class}: #{e.message}")
+    render json: { error: "Could not export bubbles zip." }, status: :unprocessable_entity
+  end
+
   private
+
+  def export_image_extension(url)
+    path = URI.parse(url.to_s).path.to_s
+    ext = File.extname(path).to_s.downcase
+    allowed = %w[.jpg .jpeg .png .webp .gif]
+    return ".jpg" if ext.blank? || !allowed.include?(ext)
+    ext == ".jpeg" ? ".jpg" : ext
+  rescue URI::InvalidURIError
+    ".jpg"
+  end
+
+  def download_remote_image(url)
+    uri = URI.parse(url.to_s)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.use_ssl = uri.scheme == "https"
+    response = http.request(Net::HTTP::Get.new(uri.request_uri))
+    raise "failed to download image #{url}" unless response.is_a?(Net::HTTPSuccess)
+    [response.body, response["content-type"].presence || "image/jpeg"]
+  end
 
   # Optional HTML body: split into items (same rules as split_single_item), insert into a new
   # layer "Passage" and set it as the default tab. The auto-created "main" layer stays (empty).

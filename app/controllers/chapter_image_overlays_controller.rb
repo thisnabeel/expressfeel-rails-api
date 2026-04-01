@@ -15,7 +15,7 @@ class ChapterImageOverlaysController < ApplicationController
       overlay_type: params.require(:overlay_type),
       shape: params.require(:shape),
       label: params[:label].presence,
-      original_arabic: params[:original_arabic].to_s,
+      original: params[:original].to_s,
       translation: params[:translation].to_s,
       position: params[:position].presence&.to_i || next_position
     )
@@ -47,7 +47,10 @@ class ChapterImageOverlaysController < ApplicationController
   end
 
   def overlay_params
-    params.require(:overlay).permit(:label, :original_arabic, :translation, :position, :overlay_type, shape: {})
+    params.require(:overlay).permit(
+      :label, :original, :translation, :position, :overlay_type, :rotation,
+      shape: {}
+    )
   end
 
   def serialize_overlay(o)
@@ -57,9 +60,10 @@ class ChapterImageOverlaysController < ApplicationController
       overlay_type: o.overlay_type,
       shape: o.shape,
       label: o.label,
-      original_arabic: o.original_arabic,
+      original: o.original,
       translation: o.translation,
-      position: o.position
+      position: o.position,
+      rotation: o.rotation
     }
   end
 end

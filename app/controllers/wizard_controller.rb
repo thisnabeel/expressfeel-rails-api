@@ -19,10 +19,10 @@ class WizardController < ApplicationController
       response_format: "json_object"
     )
 
-    original_arabic, translation = normalize_result(result)
+    extracted_original, translation = normalize_result(result)
 
     # Retry with plain-text contract if JSON mode omitted expected fields.
-    if original_arabic.blank? || translation.blank?
+    if extracted_original.blank? || translation.blank?
       text_prompt = <<~PROMPT
         Read the manga speech-bubble image and respond with EXACTLY two lines:
         ARABIC: <the extracted Arabic text>
@@ -36,19 +36,19 @@ class WizardController < ApplicationController
         response_format: "text"
       )
       text_arabic, text_translation = parse_text_contract(text_result)
-      original_arabic = original_arabic.presence || text_arabic
+      extracted_original = extracted_original.presence || text_arabic
       translation = translation.presence || text_translation
     end
 
-    if original_arabic.blank?
-      original_arabic = "No Arabic text extracted."
+    if extracted_original.blank?
+      extracted_original = "No Arabic text extracted."
     end
     if translation.blank?
       translation = "No translation returned."
     end
 
     render json: {
-      original_arabic: original_arabic.to_s,
+      original: extracted_original.to_s,
       translation: translation.to_s
     }
   rescue StandardError => e
@@ -56,15 +56,45 @@ class WizardController < ApplicationController
     render json: { error: "Could not extract text right now." }, status: :unprocessable_entity
   end
 
+  # Translates the Arabic (or source) line the editor typed—no image.
+  def translate_text
+    text = params[:text].to_s.strip
+    return render json: { error: "text is required" }, status: :unprocessable_entity if text.blank?
+    return render json: { error: "text is too long (max 4000 characters)" }, status: :unprocessable_entity if text.length > 4000
+
+    prompt = <<~PROMPT
+      You translate manga or dialogue lines into natural English.
+      Input text is usually Arabic script; it may rarely be another language.
+      """
+      #{text}
+      """
+      Return ONLY a JSON object with one key:
+      - "translation": the English translation, concise and faithful to tone.
+      If the input is not translatable, return {"translation": ""}.
+    PROMPT
+
+    result = WizardService.ask(prompt, "json_object")
+    translation = result["translation"].presence || result["english"].presence || ""
+
+    if translation.blank? && result["raw_response"].present?
+      translation = result["raw_response"].to_s.strip
+    end
+
+    render json: { translation: translation.to_s }
+  rescue StandardError => e
+    Rails.logger.error("[wizard_translate_text] #{e.class}: #{e.message}")
+    render json: { error: "Could not translate right now." }, status: :unprocessable_entity
+  end
+
   private
 
   def normalize_result(result)
-    original_arabic = result["original_arabic"].presence || result["arabic"].presence || result["original"].presence
+    extracted = result["original_arabic"].presence || result["arabic"].presence || result["original"].presence
     translation = result["translation"].presence || result["translation_en"].presence || result["english"].presence
-    if original_arabic.blank? && translation.blank? && result["raw_response"].present?
-      original_arabic = result["raw_response"].to_s
+    if extracted.blank? && translation.blank? && result["raw_response"].present?
+      extracted = result["raw_response"].to_s
     end
-    [original_arabic, translation]
+    [extracted, translation]
   end
 
   def parse_text_contract(raw_text)
