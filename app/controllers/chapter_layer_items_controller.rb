@@ -3,7 +3,7 @@ class ChapterLayerItemsController < ApplicationController
 
   before_action :authenticate_api_admin!
   before_action :set_layer, only: [:create, :reorder, :insert_after, :suggest_hint_translations_batch]
-  before_action :set_item, only: [:update, :destroy, :suggest_hint_translation, :upsert_sub_layer_item]
+  before_action :set_item, only: [:update, :destroy, :suggest_hint_translation, :upsert_sub_layer_item, :generate_block_wizard]
 
   def create
     @item = @layer.chapter_layer_items.new(item_params)
@@ -127,6 +127,61 @@ class ChapterLayerItemsController < ApplicationController
   rescue ActiveRecord::RecordNotFound
     render json: { error: "start_item_id not found in this layer" }, status: :unprocessable_entity
   rescue StandardError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  end
+
+  # POST /chapter_layer_items/:id/generate_block_wizard
+  # body: { language_chapter_blockable_set_id:, payload_text?: optional override }
+  def generate_block_wizard
+    set_id = params.require(:language_chapter_blockable_set_id)
+    set = LanguageChapterBlockableSet.find(set_id)
+    chapter = @item.chapter_layer.chapter
+    if set.language_id != chapter.language_id
+      return render json: { error: "Blockable set belongs to a different language" }, status: :unprocessable_entity
+    end
+
+    if set.language_chapter_blockable_options.empty?
+      return render json: { error: "Blockable set has no options. Add options before generating." }, status: :unprocessable_entity
+    end
+
+    payload_text = params[:payload_text].to_s.strip.presence
+    payload_text ||= LayerItemHintTranslator.plain_text(@item.body)
+
+    prompt = BlockableSetWizardPromptBuilder.build_combined_prompt(set: set, payload_text: payload_text.to_s)
+    expected_json = BlockableSetWizardPromptBuilder.build_expected_json_string(set: set)
+
+    result = BlockableSetWizardRunner.run!(prompt: prompt, expected_json: expected_json)
+    unless result[:ok] && result[:items].is_a?(Array)
+      msg = result[:error].presence || "Wizard did not return an items array"
+      return render json: { error: msg, parsed: result[:parsed] }, status: :unprocessable_entity
+    end
+
+    display_keys = BlockableSetWizardPromptBuilder.display_keys_for_set(set: set)
+    details = {
+      "items" => result[:items],
+      "display_keys" => display_keys
+    }
+
+    # Drop every ChapterLayerBlock tied to this set on this item (handles duplicates), then persist one fresh row.
+    ChapterLayerBlock.transaction do
+      @item.chapter_layer_blocks.where(blockable_type: "LanguageChapterBlockableSet", blockable_id: set.id).delete_all
+      @item.chapter_layer_blocks.create!(
+        blockable: set,
+        position: set.position || set.id,
+        details: details
+      )
+    end
+
+    @item.reload
+    render json: {
+      chapter_layer_blocks: @item.chapter_layer_blocks.includes(:blockable).order(:position, :id).map(&:as_json_for_chapter),
+      items: result[:items]
+    }
+  rescue ActiveRecord::RecordInvalid => e
+    render json: { error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Not found" }, status: :not_found
+  rescue ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
 

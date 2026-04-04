@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_04_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -131,6 +131,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
     t.datetime "updated_at", null: false
     t.index ["chapter_id", "position"], name: "index_chapter_images_on_chapter_id_and_position"
     t.index ["chapter_id"], name: "index_chapter_images_on_chapter_id"
+  end
+
+  create_table "chapter_layer_blocks", force: :cascade do |t|
+    t.bigint "chapter_layer_item_id", null: false
+    t.jsonb "details", default: {}, null: false
+    t.integer "position", default: 0, null: false
+    t.string "blockable_type", null: false
+    t.bigint "blockable_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["blockable_type", "blockable_id"], name: "index_chapter_layer_blocks_on_blockable"
+    t.index ["chapter_layer_item_id", "position"], name: "index_chapter_layer_blocks_on_item_and_position"
+    t.index ["chapter_layer_item_id"], name: "index_chapter_layer_blocks_on_chapter_layer_item_id"
   end
 
   create_table "chapter_layer_items", force: :cascade do |t|
@@ -380,6 +393,44 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
     t.integer "language_id"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+  end
+
+  create_table "language_chapter_blockable_options", force: :cascade do |t|
+    t.bigint "language_chapter_blockable_set_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.string "display", default: "display", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_chapter_blockable_set_id", "position"], name: "index_lc_blockable_opts_on_set_and_position"
+    t.index ["language_chapter_blockable_set_id"], name: "idx_on_language_chapter_blockable_set_id_c6980bfca8"
+  end
+
+  create_table "language_chapter_blockable_prompt_rules", force: :cascade do |t|
+    t.bigint "language_chapter_blockable_set_id"
+    t.bigint "language_chapter_blockable_option_id"
+    t.text "body", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_chapter_blockable_option_id", "position"], name: "index_lc_blockable_prompt_rules_on_opt_and_position"
+    t.index ["language_chapter_blockable_option_id"], name: "idx_on_language_chapter_blockable_option_id_d0125c0296"
+    t.index ["language_chapter_blockable_set_id", "position"], name: "index_lc_blockable_prompt_rules_on_set_and_position"
+    t.index ["language_chapter_blockable_set_id"], name: "idx_on_language_chapter_blockable_set_id_ecac34e6ce"
+    t.check_constraint "language_chapter_blockable_set_id IS NOT NULL AND language_chapter_blockable_option_id IS NULL OR language_chapter_blockable_set_id IS NULL AND language_chapter_blockable_option_id IS NOT NULL", name: "lc_blockable_prompt_rule_one_parent_ck"
+  end
+
+  create_table "language_chapter_blockable_sets", force: :cascade do |t|
+    t.bigint "language_id", null: false
+    t.string "title", null: false
+    t.text "description"
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.text "example_payload"
+    t.index ["language_id", "position"], name: "index_lc_blockable_sets_on_lang_and_position"
+    t.index ["language_id"], name: "index_language_chapter_blockable_sets_on_language_id"
   end
 
   create_table "language_chapter_sublayers", force: :cascade do |t|
@@ -883,6 +934,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
 
   add_foreign_key "chapter_image_overlays", "chapter_images"
   add_foreign_key "chapter_images", "chapters"
+  add_foreign_key "chapter_layer_blocks", "chapter_layer_items"
   add_foreign_key "chapter_layer_items", "chapter_layers"
   add_foreign_key "chapter_layers", "chapters"
   add_foreign_key "chapters", "chapters"
@@ -891,6 +943,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_01_000000) do
   add_foreign_key "factory_dynamic_inputs", "factory_dynamics"
   add_foreign_key "factory_dynamic_outputs", "factory_dynamic_inputs"
   add_foreign_key "factory_material_details", "factory_materials"
+  add_foreign_key "language_chapter_blockable_options", "language_chapter_blockable_sets"
+  add_foreign_key "language_chapter_blockable_prompt_rules", "language_chapter_blockable_options"
+  add_foreign_key "language_chapter_blockable_prompt_rules", "language_chapter_blockable_sets"
+  add_foreign_key "language_chapter_blockable_sets", "languages"
   add_foreign_key "language_chapter_sublayers", "languages"
   add_foreign_key "language_traits", "languages"
   add_foreign_key "language_traits", "universals"

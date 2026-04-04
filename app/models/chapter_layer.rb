@@ -19,7 +19,7 @@ class ChapterLayer < ApplicationRecord
     scope = scope.offset(items_offset.to_i) if include_items && items_offset.to_i.positive?
     scope = scope.limit(items_limit.to_i) if include_items && items_limit.present? && items_limit.to_i.positive?
     items = if include_items
-      scope.includes(sub_layer_items: :language_chapter_sublayer).map do |item|
+      scope.includes(sub_layer_items: :language_chapter_sublayer, chapter_layer_blocks: :blockable).map do |item|
         sub_layer_items_json = item.sub_layer_items.map do |sli|
           {
             id: sli.id,

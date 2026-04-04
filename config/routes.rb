@@ -132,9 +132,25 @@ Rails.application.routes.draw do
   post "/languages/:language_id/chapter_sublayers" => "language_chapter_sublayers#create"
   patch "/chapter_sublayers/:id" => "language_chapter_sublayers#update"
   delete "/chapter_sublayers/:id" => "language_chapter_sublayers#destroy"
+
+  get "/languages/:language_id/chapter_blockable_sets" => "language_chapter_blockable_sets#index"
+  post "/languages/:language_id/chapter_blockable_sets" => "language_chapter_blockable_sets#create"
+  patch "/language_chapter_blockable_sets/:id" => "language_chapter_blockable_sets#update"
+  delete "/language_chapter_blockable_sets/:id" => "language_chapter_blockable_sets#destroy"
+
+  get "/language_chapter_blockable_sets/:language_chapter_blockable_set_id/chapter_blockable_options" => "language_chapter_blockable_options#index"
+  post "/language_chapter_blockable_sets/:language_chapter_blockable_set_id/chapter_blockable_options" => "language_chapter_blockable_options#create"
+  patch "/language_chapter_blockable_options/:id" => "language_chapter_blockable_options#update"
+  delete "/language_chapter_blockable_options/:id" => "language_chapter_blockable_options#destroy"
+
+  post "/language_chapter_blockable_sets/:language_chapter_blockable_set_id/prompt_rules" => "language_chapter_blockable_prompt_rules#create"
+  post "/language_chapter_blockable_options/:language_chapter_blockable_option_id/prompt_rules" => "language_chapter_blockable_prompt_rules#create"
+  patch "/language_chapter_blockable_prompt_rules/:id" => "language_chapter_blockable_prompt_rules#update"
+  delete "/language_chapter_blockable_prompt_rules/:id" => "language_chapter_blockable_prompt_rules#destroy"
   post "/wizard/extract_manga_text" => "wizard#extract_manga_text"
   post "/wizard/translate_text" => "wizard#translate_text"
   post "/wizard/apply_instruction" => "wizard#apply_instruction"
+  post "/wizard/block_set_testing" => "wizard#block_set_testing"
   resources :chapters, only: [:show, :update, :destroy] do
     member do
       post :move
@@ -161,9 +177,11 @@ Rails.application.routes.draw do
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items/insert_after" => "chapter_layer_items#insert_after"
   post "/chapter_layers/:chapter_layer_id/chapter_layer_items/suggest_hint_translations_batch" => "chapter_layer_items#suggest_hint_translations_batch"
   post "/chapter_layer_items/:id/suggest_hint_translation" => "chapter_layer_items#suggest_hint_translation"
+  post "/chapter_layer_items/:id/generate_block_wizard" => "chapter_layer_items#generate_block_wizard"
   patch "/chapter_layer_items/:id/sub_layer_item" => "chapter_layer_items#upsert_sub_layer_item"
   patch "/chapter_layer_items/:id" => "chapter_layer_items#update"
   delete "/chapter_layer_items/:id" => "chapter_layer_items#destroy"
+  post "/chapter_layer_items/:chapter_layer_item_id/chapter_layer_blocks" => "chapter_layer_blocks#create"
   patch "/chapter_layers/:chapter_layer_id/chapter_layer_items/reorder" => "chapter_layer_items#reorder"
 
   # Layer quizzes (admin CRUD + generation)

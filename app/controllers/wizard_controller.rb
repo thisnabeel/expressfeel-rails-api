@@ -1,4 +1,8 @@
 class WizardController < ApplicationController
+  include ApiAuthenticatable
+
+  before_action :authenticate_api_admin!, only: [:block_set_testing]
+
   def extract_manga_text
     image_base64 = params[:image_base64].to_s
     return render json: { error: "image_base64 is required" }, status: :unprocessable_entity if image_base64.blank?
@@ -118,6 +122,52 @@ class WizardController < ApplicationController
   rescue StandardError => e
     Rails.logger.error("[wizard_apply_instruction] #{e.class}: #{e.message}")
     render json: { error: "Could not apply instruction right now." }, status: :unprocessable_entity
+  end
+
+  # Admin: run the live blockable-set prompt against the model; expect JSON array shape from expected_json.
+  def block_set_testing
+    prompt = params[:prompt].to_s
+    expected_json = params[:expected_json].to_s
+    if prompt.blank?
+      return render json: { error: "prompt is required" }, status: :unprocessable_entity
+    end
+    if expected_json.blank?
+      return render json: { error: "expected_json is required" }, status: :unprocessable_entity
+    end
+    if prompt.length > 48_000
+      return render json: { error: "prompt is too long (max 48000 characters)" }, status: :unprocessable_entity
+    end
+    if expected_json.length > 24_000
+      return render json: { error: "expected_json is too long (max 24000 characters)" }, status: :unprocessable_entity
+    end
+
+    wizard_prompt = <<~PROMPT
+      You are testing a "blockable set" configuration for language-processing prompts.
+
+      Return ONLY a JSON object with exactly one top-level key:
+      - "items": a JSON array. Each element must be a plain object whose keys match the keys shown in the EXPECTED STRUCTURE sample below (same keys for every row). Fill values with real strings produced by strictly following the INSTRUCTIONS below—do not use the placeholder word "String" unless it is the genuine answer.
+
+      EXPECTED STRUCTURE (array of objects; values are illustrative only):
+      #{expected_json}
+
+      INSTRUCTIONS (complete prompt to execute; includes any payload line):
+      #{prompt}
+    PROMPT
+
+    parsed = WizardService.ask(wizard_prompt.strip, "json_object")
+    items = parsed["items"]
+    if items.is_a?(Array)
+      render json: { ok: true, items: items }
+    else
+      render json: {
+        ok: false,
+        parsed: parsed,
+        message: "The model did not return a top-level \"items\" array; showing parsed JSON for debugging."
+      }
+    end
+  rescue StandardError => e
+    Rails.logger.error("[wizard_block_set_testing] #{e.class}: #{e.message}")
+    render json: { error: "Block set test failed. Try again." }, status: :unprocessable_entity
   end
 
   private

@@ -35,9 +35,15 @@ class ChaptersController < ApplicationController
     page = [params[:items_page].to_i, 1].max
     pagination_requested = params[:items_per_page].present? || params[:items_page].present? || params[:items_layer_id].present?
     default_layer_id = layers_rel.find(&:is_default)&.id || layers_rel.first&.id
+    layer_ids = layers_rel.map(&:id)
     paged_layer_id = if pagination_requested
-      requested = params[:items_layer_id].presence&.to_i
-      requested.presence || default_layer_id
+      # Use to_i so blank/missing param is 0 (never nil — avoids positive? on nil).
+      requested_id = params[:items_layer_id].to_i
+      if requested_id.positive? && layer_ids.include?(requested_id)
+        requested_id
+      else
+        default_layer_id
+      end
     end
 
     chapter_layers_json = layers_rel.map do |l|

@@ -1,6 +1,7 @@
 class ChapterLayerItem < ApplicationRecord
   belongs_to :chapter_layer
   has_many :sub_layer_items, as: :sublayer_itemable, dependent: :destroy
+  has_many :chapter_layer_blocks, dependent: :destroy
 
   STYLES = %w[inline header block quote bullet ordered line_break hr].freeze
 
@@ -11,6 +12,22 @@ class ChapterLayerItem < ApplicationRecord
   after_update_commit :refresh_chapter_default_layer_items_count_cache_for_layer_change
 
   scope :ordered, -> { order(:position, :id) }
+
+  def as_json(options = {})
+    super(options).merge(
+      "chapter_layer_blocks" => chapter_layer_blocks_as_json
+    )
+  end
+
+  # When parent scope uses .includes(chapter_layer_blocks: :blockable), use memory only — do not
+  # chain .order on the association (that bypasses the preload and causes one SQL query per item).
+  def chapter_layer_blocks_as_json
+    if association(:chapter_layer_blocks).loaded?
+      chapter_layer_blocks.sort_by { |b| [b.position || 0, b.id || 0] }.map(&:as_json_for_chapter)
+    else
+      chapter_layer_blocks.order(:position, :id).includes(:blockable).map(&:as_json_for_chapter)
+    end
+  end
 
   private
 
