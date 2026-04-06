@@ -36,6 +36,8 @@ class Chapter < ApplicationRecord
           description: ch.description,
           chapter_mode: ch.chapter_mode,
           tier: ch.tier,
+          hidden: ch.hidden,
+          coming_soon: ch.coming_soon,
           chapter_id: ch.chapter_id,
           position: ch.position,
           language_id: ch.language_id,

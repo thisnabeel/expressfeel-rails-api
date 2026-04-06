@@ -63,7 +63,7 @@ class ChaptersController < ApplicationController
     end
 
     render json: {
-      chapter: @chapter.as_json(only: %i[id title description chapter_mode tier chapter_id position language_id]),
+      chapter: @chapter.as_json(only: %i[id title description chapter_mode tier hidden coming_soon chapter_id position language_id]),
       chapter_images: @chapter.chapter_images.order(:position, :id).as_json(only: %i[id chapter_id image_url original_filename position]),
       language: {
         id: @chapter.language_id,
@@ -408,7 +408,7 @@ class ChaptersController < ApplicationController
   end
 
   def chapter_params
-    params.require(:chapter).permit(:title, :description, :chapter_mode, :tier, :chapter_id, :position)
+    params.require(:chapter).permit(:title, :description, :chapter_mode, :tier, :hidden, :coming_soon, :chapter_id, :position)
   end
 
   # Converts rich HTML into many items preserving block/list structure.

@@ -1,6 +1,9 @@
 class ChapterLayerItemsController < ApplicationController
   include ApiAuthenticatable
 
+  # First wizard call plus retries when PostgreSQL rejects jsonb (e.g. NUL in strings).
+  MAX_BLOCK_WIZARD_ATTEMPTS = 4
+
   before_action :authenticate_api_admin!
   before_action :set_layer, only: [:create, :reorder, :insert_after, :suggest_hint_translations_batch]
   before_action :set_item, only: [:update, :destroy, :suggest_hint_translation, :upsert_sub_layer_item, :generate_block_wizard]
@@ -147,36 +150,68 @@ class ChapterLayerItemsController < ApplicationController
     payload_text = params[:payload_text].to_s.strip.presence
     payload_text ||= LayerItemHintTranslator.plain_text(@item.body)
 
-    prompt = BlockableSetWizardPromptBuilder.build_combined_prompt(set: set, payload_text: payload_text.to_s)
+    base_prompt = BlockableSetWizardPromptBuilder.build_combined_prompt(set: set, payload_text: payload_text.to_s)
     expected_json = BlockableSetWizardPromptBuilder.build_expected_json_string(set: set)
-
-    result = BlockableSetWizardRunner.run!(prompt: prompt, expected_json: expected_json)
-    unless result[:ok] && result[:items].is_a?(Array)
-      msg = result[:error].presence || "Wizard did not return an items array"
-      return render json: { error: msg, parsed: result[:parsed] }, status: :unprocessable_entity
-    end
-
     display_keys = BlockableSetWizardPromptBuilder.display_keys_for_set(set: set)
-    details = {
-      "items" => result[:items],
-      "display_keys" => display_keys
-    }
 
-    # Drop every ChapterLayerBlock tied to this set on this item (handles duplicates), then persist one fresh row.
-    ChapterLayerBlock.transaction do
-      @item.chapter_layer_blocks.where(blockable_type: "LanguageChapterBlockableSet", blockable_id: set.id).delete_all
-      @item.chapter_layer_blocks.create!(
-        blockable: set,
-        position: set.position || set.id,
-        details: details
-      )
+    retry_feedback = nil
+    attempt_errors = []
+    last_result = nil
+
+    MAX_BLOCK_WIZARD_ATTEMPTS.times do |attempt_index|
+      prompt = block_wizard_prompt_with_retry_context(base_prompt, retry_feedback, attempt_index)
+      result = BlockableSetWizardRunner.run!(prompt: prompt, expected_json: expected_json)
+      last_result = result
+
+      unless result[:ok] && result[:items].is_a?(Array)
+        msg = result[:error].presence || "Wizard did not return an items array"
+        return render json: {
+          error: msg,
+          parsed: result[:parsed],
+          wizard_attempts: attempt_index + 1,
+          attempt_errors: attempt_errors + [{ "attempt" => attempt_index + 1, "phase" => "wizard", "error" => msg }]
+        }, status: :unprocessable_entity
+      end
+
+      details = {
+        "items" => result[:items],
+        "display_keys" => display_keys
+      }
+      details = deep_scrub_value_for_postgres_jsonb(details)
+
+      begin
+        ChapterLayerBlock.transaction do
+          @item.chapter_layer_blocks.where(blockable_type: "LanguageChapterBlockableSet", blockable_id: set.id).delete_all
+          @item.chapter_layer_blocks.create!(
+            blockable: set,
+            position: set.position || set.id,
+            details: details
+          )
+        end
+
+        @item.reload
+        return render json: {
+          chapter_layer_blocks: @item.chapter_layer_blocks.includes(:blockable).order(:position, :id).map(&:as_json_for_chapter),
+          items: result[:items],
+          wizard_attempts: attempt_index + 1,
+          attempt_errors: attempt_errors.presence
+        }
+      rescue ActiveRecord::StatementInvalid => e
+        summary = statement_invalid_summary_for_wizard(e)
+        attempt_errors << { "attempt" => attempt_index + 1, "phase" => "persist", "error" => summary }
+        Rails.logger.warn("[generate_block_wizard] persist failed attempt #{attempt_index + 1}: #{summary}")
+        retry_feedback = build_block_wizard_retry_feedback(summary)
+        next
+      end
     end
 
-    @item.reload
+    last_persist_error = attempt_errors.reverse.find { |h| h["phase"] == "persist" }&.dig("error")
     render json: {
-      chapter_layer_blocks: @item.chapter_layer_blocks.includes(:blockable).order(:position, :id).map(&:as_json_for_chapter),
-      items: result[:items]
-    }
+      error: last_persist_error.presence || "Could not persist wizard output after #{MAX_BLOCK_WIZARD_ATTEMPTS} attempts.",
+      parsed: last_result&.dig(:parsed),
+      wizard_attempts: MAX_BLOCK_WIZARD_ATTEMPTS,
+      attempt_errors: attempt_errors
+    }, status: :unprocessable_entity
   rescue ActiveRecord::RecordInvalid => e
     render json: { error: e.record.errors.full_messages.join(", ") }, status: :unprocessable_entity
   rescue ActiveRecord::RecordNotFound
@@ -246,5 +281,60 @@ class ChapterLayerItemsController < ApplicationController
       prior_passage_pairs: prior_passage_pairs,
       previous_source_lines: previous_lines
     )
+  end
+
+  # C0 controls except tab, LF, CR — PostgreSQL jsonb rejects e.g. U+0000 in strings.
+  PG_JSONB_SCRUB_REGEX = /[\u0000-\u0008\u000B\u000C\u000E-\u001F]/.freeze
+
+  def deep_scrub_value_for_postgres_jsonb(value)
+    case value
+    when String
+      value.gsub(PG_JSONB_SCRUB_REGEX, "")
+    when Array
+      value.map { |v| deep_scrub_value_for_postgres_jsonb(v) }
+    when Hash
+      value.transform_values { |v| deep_scrub_value_for_postgres_jsonb(v) }
+    else
+      value
+    end
+  end
+
+  def statement_invalid_summary_for_wizard(exception)
+    parts = [exception.message.to_s.strip]
+    c = exception.cause
+    if c.respond_to?(:message) && c.message.present?
+      parts << "#{c.class}: #{c.message}".strip
+    end
+    parts.reject(&:blank?).join(" | ")
+  end
+
+  def build_block_wizard_retry_feedback(summary)
+    <<~TXT.strip
+      The database refused to store your previous "items" JSON. Details:
+      #{summary.truncate(1800, omission: "…")}
+
+      Fix: use only normal printable text in every string value. Do not include U+0000 (NUL) or other control characters.
+      For Arabic verb citation use a real backslash with spaces, e.g. "فَعَلَ \\ يَفْعَلُ", not JSON unicode escapes that decode to NUL or invalid code points.
+    TXT
+  end
+
+  def block_wizard_prompt_with_retry_context(base_prompt, retry_feedback, attempt_index)
+    return base_prompt if retry_feedback.blank?
+
+    suffix = <<~FEEDBACK
+      ---
+      RETRY #{attempt_index + 1}/#{MAX_BLOCK_WIZARD_ATTEMPTS}: DATABASE REJECTED THE PREVIOUS OUTPUT
+      #{retry_feedback}
+    FEEDBACK
+
+    combined = "#{base_prompt}\n\n#{suffix}"
+    max_len = BlockableSetWizardRunner::MAX_PROMPT
+    return combined if combined.length <= max_len
+
+    room = max_len - base_prompt.length - 20
+    return base_prompt if room < 200
+
+    trimmed_suffix = suffix.truncate(room, omission: "…\n")
+    "#{base_prompt}\n\n#{trimmed_suffix}"
   end
 end
