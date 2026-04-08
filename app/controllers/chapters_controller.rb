@@ -5,10 +5,13 @@ require "tmpdir"
 
 class ChaptersController < ApplicationController
   include ApiAuthenticatable
+  include ChapterImageOverlaySerialization
 
-  before_action :set_language, only: [:for_language, :create, :wizard_movie_summary]
+  MAX_BULK_CHAPTER_IDS = 500
+
+  before_action :set_language, only: [:for_language, :create, :bulk_update, :wizard_movie_summary]
   before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item, :bubbles_zip]
-  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :move, :split_single_item, :wizard_movie_summary, :bubbles_zip]
+  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :bulk_update, :move, :split_single_item, :wizard_movie_summary, :bubbles_zip]
 
   def for_language
     render json: { chapters: Chapter.tree_for_language(@language.id) }
@@ -23,6 +26,31 @@ class ChaptersController < ApplicationController
     else
       render json: @chapter.errors, status: :unprocessable_entity
     end
+  end
+
+  # PATCH /languages/:language_id/chapters/bulk
+  # body: { ids: [1,2,3], chapter: { hidden?: bool, coming_soon?: bool, tier?: "Free"|"Premium" } }
+  def bulk_update
+    ids = Array.wrap(params[:ids]).map(&:to_i).uniq.reject(&:zero?)
+    if ids.empty?
+      return render json: { error: "ids must be a non-empty array of chapter ids" }, status: :unprocessable_entity
+    end
+    if ids.size > MAX_BULK_CHAPTER_IDS
+      return render json: { error: "too many ids (max #{MAX_BULK_CHAPTER_IDS})" }, status: :unprocessable_entity
+    end
+
+    attrs, bulk_err = bulk_chapter_update_attributes
+    if bulk_err
+      return render json: { error: bulk_err }, status: :unprocessable_entity
+    end
+
+    scope = Chapter.where(language_id: @language.id, id: ids)
+    if scope.count != ids.size
+      return render json: { error: "one or more ids are invalid for this language" }, status: :unprocessable_entity
+    end
+
+    scope.update_all(attrs.merge(updated_at: Time.current))
+    render json: { ok: true, updated: ids.size }
   end
 
   def show
@@ -62,9 +90,11 @@ class ChaptersController < ApplicationController
       end
     end
 
+    chapter_images = chapter_images_json
+
     render json: {
       chapter: @chapter.as_json(only: %i[id title description chapter_mode tier hidden coming_soon chapter_id position language_id]),
-      chapter_images: @chapter.chapter_images.order(:position, :id).as_json(only: %i[id chapter_id image_url original_filename position]),
+      chapter_images: chapter_images,
       language: {
         id: @chapter.language_id,
         direction: @chapter.language&.direction
@@ -409,6 +439,42 @@ class ChaptersController < ApplicationController
 
   def chapter_params
     params.require(:chapter).permit(:title, :description, :chapter_mode, :tier, :hidden, :coming_soon, :chapter_id, :position)
+  end
+
+  def chapter_images_json
+    @chapter.chapter_images
+      .includes(chapter_image_overlays: [:sub_layer_items, { chapter_image_overlay_blocks: :blockable }])
+      .order(:position, :id)
+      .map do |img|
+        overlays = img.chapter_image_overlays.sort_by { |o| [o.position || 0, o.id || 0] }
+        {
+          id: img.id,
+          chapter_id: img.chapter_id,
+          image_url: img.image_url,
+          original_filename: img.original_filename,
+          position: img.position,
+          overlays_count: overlays.length,
+          overlays: overlays.map { |o| serialize_overlay(o) }
+        }
+      end
+  end
+
+  # Returns [attrs_hash, nil] or [nil, error_string]
+  def bulk_chapter_update_attributes
+    ch = params[:chapter]
+    return [nil, "chapter must include hidden, coming_soon, and/or tier"] if ch.blank?
+
+    p = ch.permit(:hidden, :coming_soon, :tier)
+    attrs = {}
+    attrs[:hidden] = ActiveModel::Type::Boolean.new.cast(p[:hidden]) if p.key?(:hidden)
+    attrs[:coming_soon] = ActiveModel::Type::Boolean.new.cast(p[:coming_soon]) if p.key?(:coming_soon)
+    if p.key?(:tier)
+      t = p[:tier].to_s
+      return [nil, "tier must be Free or Premium"] unless %w[Free Premium].include?(t)
+      attrs[:tier] = t
+    end
+    return [nil, "chapter must include hidden, coming_soon, and/or tier"] if attrs.empty?
+    [attrs, nil]
   end
 
   # Converts rich HTML into many items preserving block/list structure.

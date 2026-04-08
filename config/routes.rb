@@ -127,6 +127,7 @@ Rails.application.routes.draw do
 
   get "/languages/:language_id/chapters" => "chapters#for_language"
   post "/languages/:language_id/chapters" => "chapters#create"
+  patch "/languages/:language_id/chapters/bulk" => "chapters#bulk_update"
   post "/languages/:language_id/chapters/wizard_movie_summary" => "chapters#wizard_movie_summary"
   get "/languages/:language_id/chapter_sublayers" => "language_chapter_sublayers#index"
   post "/languages/:language_id/chapter_sublayers" => "language_chapter_sublayers#create"
@@ -151,6 +152,7 @@ Rails.application.routes.draw do
   post "/wizard/translate_text" => "wizard#translate_text"
   post "/wizard/apply_instruction" => "wizard#apply_instruction"
   post "/wizard/block_set_testing" => "wizard#block_set_testing"
+  post "/wizard/block_tile_remix" => "wizard#block_tile_remix"
   resources :chapters, only: [:show, :update, :destroy] do
     member do
       post :move
@@ -167,6 +169,9 @@ Rails.application.routes.draw do
   get "/chapter_images/:chapter_image_id/overlays" => "chapter_image_overlays#index"
   post "/chapter_images/:chapter_image_id/overlays" => "chapter_image_overlays#create"
   patch "/chapter_image_overlays/:id" => "chapter_image_overlays#update"
+  patch "/chapter_image_overlays/:id/sub_layer_item" => "chapter_image_overlays#upsert_sub_layer_item"
+  post "/chapter_image_overlays/:id/generate_block_wizard" => "chapter_image_overlays#generate_block_wizard"
+  post "/chapter_image_overlays/:chapter_image_overlay_id/overlay_blocks" => "chapter_image_overlay_blocks#create"
   delete "/chapter_image_overlays/:id" => "chapter_image_overlays#destroy"
 
   post "/chapters/:chapter_id/chapter_layers" => "chapter_layers#create"

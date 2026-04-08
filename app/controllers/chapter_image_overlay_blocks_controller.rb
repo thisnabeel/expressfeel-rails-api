@@ -1,28 +1,28 @@
-class ChapterLayerBlocksController < ApplicationController
+class ChapterImageOverlayBlocksController < ApplicationController
   include ApiAuthenticatable
 
   before_action :authenticate_api_admin!
-  before_action :set_item, only: [:create]
+  before_action :set_overlay, only: [:create]
 
-  # POST /chapter_layer_items/:chapter_layer_item_id/chapter_layer_blocks
+  # POST /chapter_image_overlays/:chapter_image_overlay_id/overlay_blocks
   # body: { language_chapter_blockable_set_id: Integer | null, chapter_layer_block: { details: {} optional } }
-  # Upserts one block for the given set; other sets' blocks on this item are unchanged. Blank id clears all blocks.
   def create
     set_id = params[:language_chapter_blockable_set_id].presence
 
     if set_id.blank?
-      @item.chapter_layer_blocks.destroy_all
-      return render json: { chapter_layer_blocks: chapter_layer_blocks_json_for(@item.reload) }
+      @overlay.chapter_image_overlay_blocks.destroy_all
+      @overlay.reload
+      return render json: { chapter_layer_blocks: overlay_blocks_json_for(@overlay) }
     end
 
     set = LanguageChapterBlockableSet.find(set_id)
-    chapter = @item.chapter_layer.chapter
-    if set.language_id != chapter.language_id
+    chapter = @overlay.chapter_image&.chapter
+    if chapter.blank? || set.language_id != chapter.language_id
       return render json: { error: "Blockable set belongs to a different language" }, status: :unprocessable_entity
     end
 
     incoming = extract_details_from_params
-    block = @item.chapter_layer_blocks.find_or_initialize_by(blockable: set)
+    block = @overlay.chapter_image_overlay_blocks.find_or_initialize_by(blockable: set)
     block.position = set.position || set.id
     if incoming.present?
       block.details = incoming
@@ -31,7 +31,8 @@ class ChapterLayerBlocksController < ApplicationController
     end
     block.save!
 
-    render json: { chapter_layer_blocks: chapter_layer_blocks_json_for(@item.reload) }, status: :created
+    @overlay.reload
+    render json: { chapter_layer_blocks: overlay_blocks_json_for(@overlay) }, status: :created
   rescue ActiveRecord::RecordNotFound
     render json: { error: "Not found" }, status: :not_found
   rescue ActiveRecord::RecordInvalid => e
@@ -40,15 +41,15 @@ class ChapterLayerBlocksController < ApplicationController
 
   private
 
-  def chapter_layer_blocks_json_for(item)
-    item.chapter_layer_blocks
+  def overlay_blocks_json_for(overlay)
+    overlay.chapter_image_overlay_blocks
       .includes(:blockable)
       .order(:position, :id)
       .map(&:as_json_for_chapter)
   end
 
-  def set_item
-    @item = ChapterLayerItem.find(params[:chapter_layer_item_id])
+  def set_overlay
+    @overlay = ChapterImageOverlay.find(params[:chapter_image_overlay_id])
   end
 
   def extract_details_from_params
@@ -59,8 +60,6 @@ class ChapterLayerBlocksController < ApplicationController
     d = permitted[:details]
     return {} if d.blank?
 
-    # Strong params returns ActionController::Parameters here, not Hash — must convert
-    # or `is_a?(Hash)` fails and we never persist edits from the client.
     deep = d.respond_to?(:to_unsafe_h) ? d.to_unsafe_h : d
     deep.is_a?(Hash) ? deep : {}
   end

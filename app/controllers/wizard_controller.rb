@@ -1,7 +1,7 @@
 class WizardController < ApplicationController
   include ApiAuthenticatable
 
-  before_action :authenticate_api_admin!, only: [:block_set_testing]
+  before_action :authenticate_api_admin!, only: [:block_set_testing, :block_tile_remix]
 
   def extract_manga_text
     image_base64 = params[:image_base64].to_s
@@ -168,6 +168,71 @@ class WizardController < ApplicationController
   rescue StandardError => e
     Rails.logger.error("[wizard_block_set_testing] #{e.class}: #{e.message}")
     render json: { error: "Block set test failed. Try again." }, status: :unprocessable_entity
+  end
+
+  # Admin: remix a SINGLE field on a SINGLE wizard tile row.
+  #
+  # body:
+  # - context_type: "chapter_layer_item" | "chapter_image_overlay"
+  # - context_id: Integer
+  # - language_chapter_blockable_set_id: Integer
+  # - row_index: Integer
+  # - field_key: String
+  # - instruction: String (free-form; comes from the bolt menu input)
+  #
+  # returns: { ok: true, value: String, row_index: Integer, field_key: String }
+  def block_tile_remix
+    context_type = params.require(:context_type).to_s
+    context_id = params.require(:context_id)
+    set_id = params.require(:language_chapter_blockable_set_id)
+    row_index = params.require(:row_index).to_i
+    field_key = params.require(:field_key).to_s.strip
+    instruction = params[:instruction].to_s.strip
+
+    if field_key.blank?
+      return render json: { error: "field_key is required" }, status: :unprocessable_entity
+    end
+    if instruction.blank?
+      return render json: { error: "instruction is required" }, status: :unprocessable_entity
+    end
+    if instruction.length > 8000
+      return render json: { error: "instruction is too long (max 8000 characters)" }, status: :unprocessable_entity
+    end
+
+    set = LanguageChapterBlockableSet.find(set_id)
+
+    row_hash, current_value, chapter_language_id =
+      BlockTileRemixFetcher.fetch!(
+        context_type: context_type,
+        context_id: context_id,
+        set: set,
+        row_index: row_index,
+        field_key: field_key
+      )
+
+    prompt = BlockTileRemixPromptBuilder.build(
+      set: set,
+      row_hash: row_hash,
+      field_key: field_key,
+      current_value: current_value,
+      instruction: instruction
+    )
+
+    parsed = WizardService.ask(prompt, "json_object")
+    value = parsed["value"].presence || parsed["output"].presence || parsed["result"].presence
+    value = parsed["raw_response"].to_s.strip if value.blank? && parsed["raw_response"].present?
+    value = value.to_s
+
+    render json: { ok: true, value: value, row_index: row_index, field_key: field_key }
+  rescue ActiveRecord::RecordNotFound
+    render json: { error: "Not found" }, status: :not_found
+  rescue ActionController::ParameterMissing => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  rescue BlockTileRemixFetcher::UserError => e
+    render json: { error: e.message }, status: :unprocessable_entity
+  rescue StandardError => e
+    Rails.logger.error("[wizard_block_tile_remix] #{e.class}: #{e.message}")
+    render json: { error: "Could not remix block right now." }, status: :unprocessable_entity
   end
 
   private

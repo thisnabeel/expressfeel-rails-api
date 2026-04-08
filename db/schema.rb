@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_05_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -104,6 +104,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_05_120000) do
     t.integer "language_id"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+  end
+
+  create_table "chapter_image_overlay_blocks", force: :cascade do |t|
+    t.bigint "chapter_image_overlay_id", null: false
+    t.jsonb "details", default: {}, null: false
+    t.integer "position", default: 0, null: false
+    t.string "blockable_type", null: false
+    t.bigint "blockable_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["blockable_type", "blockable_id"], name: "index_chapter_image_overlay_blocks_on_blockable"
+    t.index ["chapter_image_overlay_id", "position"], name: "index_overlay_blocks_on_overlay_and_position"
+    t.index ["chapter_image_overlay_id"], name: "index_chapter_image_overlay_blocks_on_chapter_image_overlay_id"
   end
 
   create_table "chapter_image_overlays", force: :cascade do |t|
@@ -934,6 +947,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_05_120000) do
     t.index ["original"], name: "index_word_blocks_on_original"
   end
 
+  add_foreign_key "chapter_image_overlay_blocks", "chapter_image_overlays"
   add_foreign_key "chapter_image_overlays", "chapter_images"
   add_foreign_key "chapter_images", "chapters"
   add_foreign_key "chapter_layer_blocks", "chapter_layer_items"

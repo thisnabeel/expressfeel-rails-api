@@ -71,8 +71,15 @@ class Chapter < ApplicationRecord
   end
 
   def renumber_affected_families
+    # Sibling order only depends on parent and position; skip when e.g. only hidden/tier/title changed.
+    keys = previous_changes.keys.map(&:to_s)
+    return unless (keys & %w[chapter_id position language_id]).any?
+
     families = [chapter_id]
-    families << saved_change_to_chapter_id[0] if saved_change_to_chapter_id?
+    if previous_changes.key?("chapter_id")
+      old_pid = previous_changes["chapter_id"][0]
+      families << old_pid if old_pid.present?
+    end
     self.class.renumber_siblings!(language_id, families)
   end
 

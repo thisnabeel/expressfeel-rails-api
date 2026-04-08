@@ -3,6 +3,7 @@ require "json"
 
 class ChapterImagesController < ApplicationController
   include ApiAuthenticatable
+  include ChapterImageOverlaySerialization
 
   before_action :set_chapter, only: [:index, :create]
   before_action :set_chapter_image, only: [:proxy, :wizard_bubbles, :update, :destroy]
@@ -78,9 +79,14 @@ class ChapterImagesController < ApplicationController
       end
     end
 
+    ids = created.map(&:id)
+    loaded = ChapterImageOverlay.where(id: ids).includes(
+      sub_layer_items: :language_chapter_sublayer,
+      chapter_image_overlay_blocks: :blockable
+    )
     render json: {
       count: created.length,
-      overlays: created.sort_by { |o| [o.position || 0, o.id || 0] }.map { |o| serialize_overlay(o) }
+      overlays: loaded.sort_by { |o| [o.position || 0, o.id || 0] }.map { |o| serialize_overlay(o) }
     }
   rescue StandardError => e
     Rails.logger.error("[chapter_images_wizard_bubbles] image #{@chapter_image&.id}: #{e.class}: #{e.message}")
@@ -153,17 +159,4 @@ class ChapterImagesController < ApplicationController
     }
   end
 
-  def serialize_overlay(o)
-    {
-      id: o.id,
-      chapter_image_id: o.chapter_image_id,
-      overlay_type: o.overlay_type,
-      shape: o.shape,
-      label: o.label,
-      original: o.original,
-      translation: o.translation,
-      position: o.position,
-      rotation: o.rotation
-    }
-  end
 end
