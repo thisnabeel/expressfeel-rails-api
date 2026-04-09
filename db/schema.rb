@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
+ActiveRecord::Schema[7.1].define(version: 2026_04_10_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -106,7 +106,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.datetime "updated_at", precision: nil, null: false
   end
 
-  create_table "chapter_image_overlay_blocks", force: :cascade do |t|
+  create_table "chapter_image_overlay_item_block_fields", force: :cascade do |t|
+    t.bigint "chapter_image_overlay_item_block_id", null: false
+    t.string "name", null: false
+    t.text "content", default: "", null: false
+    t.string "display_type", default: "expanded", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_image_overlay_item_block_id", "position"], name: "index_overlay_item_block_fields_on_block_and_pos"
+    t.index ["chapter_image_overlay_item_block_id"], name: "idx_on_chapter_image_overlay_item_block_id_d157999e18"
+  end
+
+  create_table "chapter_image_overlay_item_blocks", force: :cascade do |t|
     t.bigint "chapter_image_overlay_id", null: false
     t.jsonb "details", default: {}, null: false
     t.integer "position", default: 0, null: false
@@ -114,9 +126,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.bigint "blockable_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["blockable_type", "blockable_id"], name: "index_chapter_image_overlay_blocks_on_blockable"
-    t.index ["chapter_image_overlay_id", "position"], name: "index_overlay_blocks_on_overlay_and_position"
-    t.index ["chapter_image_overlay_id"], name: "index_chapter_image_overlay_blocks_on_chapter_image_overlay_id"
+    t.index ["blockable_type", "blockable_id"], name: "index_overlay_item_blocks_on_blockable"
+    t.index ["chapter_image_overlay_id", "position"], name: "index_overlay_item_blocks_on_overlay_and_pos"
+    t.index ["chapter_image_overlay_id"], name: "idx_on_chapter_image_overlay_id_f9c3aaac4b"
   end
 
   create_table "chapter_image_overlays", force: :cascade do |t|
@@ -146,7 +158,19 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.index ["chapter_id"], name: "index_chapter_images_on_chapter_id"
   end
 
-  create_table "chapter_layer_blocks", force: :cascade do |t|
+  create_table "chapter_layer_item_block_fields", force: :cascade do |t|
+    t.bigint "chapter_layer_item_block_id", null: false
+    t.string "name", null: false
+    t.text "content", default: "", null: false
+    t.string "display_type", default: "expanded", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["chapter_layer_item_block_id", "position"], name: "index_cl_item_block_fields_on_block_and_pos"
+    t.index ["chapter_layer_item_block_id"], name: "idx_on_chapter_layer_item_block_id_f1ac4320ce"
+  end
+
+  create_table "chapter_layer_item_blocks", force: :cascade do |t|
     t.bigint "chapter_layer_item_id", null: false
     t.jsonb "details", default: {}, null: false
     t.integer "position", default: 0, null: false
@@ -154,9 +178,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.bigint "blockable_id", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["blockable_type", "blockable_id"], name: "index_chapter_layer_blocks_on_blockable"
-    t.index ["chapter_layer_item_id", "position"], name: "index_chapter_layer_blocks_on_item_and_position"
-    t.index ["chapter_layer_item_id"], name: "index_chapter_layer_blocks_on_chapter_layer_item_id"
+    t.index ["blockable_type", "blockable_id"], name: "index_cl_item_blocks_on_blockable"
+    t.index ["chapter_layer_item_id", "position"], name: "index_cl_item_blocks_on_item_and_position"
+    t.index ["chapter_layer_item_id"], name: "index_chapter_layer_item_blocks_on_chapter_layer_item_id"
   end
 
   create_table "chapter_layer_items", force: :cascade do |t|
@@ -408,6 +432,16 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.integer "language_id"
     t.datetime "created_at", precision: nil, null: false
     t.datetime "updated_at", precision: nil, null: false
+  end
+
+  create_table "language_chapter_blockable_option_bolt_actions", force: :cascade do |t|
+    t.bigint "language_chapter_blockable_option_id", null: false
+    t.text "prompt", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["language_chapter_blockable_option_id", "position"], name: "index_lc_blockable_bolt_actions_on_opt_and_position"
+    t.index ["language_chapter_blockable_option_id"], name: "idx_on_language_chapter_blockable_option_id_643fc0f05c"
   end
 
   create_table "language_chapter_blockable_options", force: :cascade do |t|
@@ -947,10 +981,12 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
     t.index ["original"], name: "index_word_blocks_on_original"
   end
 
-  add_foreign_key "chapter_image_overlay_blocks", "chapter_image_overlays"
+  add_foreign_key "chapter_image_overlay_item_block_fields", "chapter_image_overlay_item_blocks", on_delete: :cascade
+  add_foreign_key "chapter_image_overlay_item_blocks", "chapter_image_overlays", on_delete: :cascade
   add_foreign_key "chapter_image_overlays", "chapter_images"
   add_foreign_key "chapter_images", "chapters"
-  add_foreign_key "chapter_layer_blocks", "chapter_layer_items"
+  add_foreign_key "chapter_layer_item_block_fields", "chapter_layer_item_blocks", on_delete: :cascade
+  add_foreign_key "chapter_layer_item_blocks", "chapter_layer_items", on_delete: :cascade
   add_foreign_key "chapter_layer_items", "chapter_layers"
   add_foreign_key "chapter_layers", "chapters"
   add_foreign_key "chapters", "chapters"
@@ -959,6 +995,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_07_120000) do
   add_foreign_key "factory_dynamic_inputs", "factory_dynamics"
   add_foreign_key "factory_dynamic_outputs", "factory_dynamic_inputs"
   add_foreign_key "factory_material_details", "factory_materials"
+  add_foreign_key "language_chapter_blockable_option_bolt_actions", "language_chapter_blockable_options"
   add_foreign_key "language_chapter_blockable_options", "language_chapter_blockable_sets"
   add_foreign_key "language_chapter_blockable_prompt_rules", "language_chapter_blockable_options"
   add_foreign_key "language_chapter_blockable_prompt_rules", "language_chapter_blockable_sets"

@@ -37,12 +37,11 @@ module ChapterImageOverlaySerialization
   end
 
   def overlay_blocks_json_for_overlay(o)
-    blocks =
-      if o.association(:chapter_image_overlay_blocks).loaded?
-        o.chapter_image_overlay_blocks.sort_by { |b| [b.position || 0, b.id || 0] }
-      else
-        o.chapter_image_overlay_blocks.includes(:blockable).order(:position, :id).to_a
-      end
-    blocks.map(&:as_json_for_chapter)
+    if o.association(:chapter_image_overlay_item_blocks).loaded?
+      blocks = o.chapter_image_overlay_item_blocks.sort_by { |b| [b.position || 0, b.id || 0] }
+      ChapterBlockableStripJson.from_ordered_blocks(blocks)
+    else
+      ChapterBlockableStripJson.overlay_strips(o)
+    end
   end
 end

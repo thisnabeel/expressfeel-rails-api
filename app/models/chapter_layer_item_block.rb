@@ -1,30 +1,14 @@
-class ChapterLayerBlock < ApplicationRecord
+class ChapterLayerItemBlock < ApplicationRecord
   belongs_to :chapter_layer_item
   belongs_to :blockable, polymorphic: true
+  has_many :chapter_layer_item_block_fields, dependent: :destroy
 
   validates :position, numericality: { only_integer: true }
   validate :blockable_matches_chapter_language
 
   scope :ordered, -> { order(:position, :id) }
 
-  def as_json_for_chapter
-    {
-      id: id,
-      details: details,
-      position: position,
-      blockable_type: blockable_type,
-      blockable_id: blockable_id,
-      language_chapter_blockable_set: language_chapter_blockable_set_json
-    }
-  end
-
   private
-
-  def language_chapter_blockable_set_json
-    return nil unless blockable_type == "LanguageChapterBlockableSet" && blockable.present?
-
-    { id: blockable.id, title: blockable.title }
-  end
 
   def blockable_matches_chapter_language
     ch = chapter_layer_item&.chapter_layer&.chapter

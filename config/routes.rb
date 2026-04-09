@@ -146,8 +146,11 @@ Rails.application.routes.draw do
 
   post "/language_chapter_blockable_sets/:language_chapter_blockable_set_id/prompt_rules" => "language_chapter_blockable_prompt_rules#create"
   post "/language_chapter_blockable_options/:language_chapter_blockable_option_id/prompt_rules" => "language_chapter_blockable_prompt_rules#create"
+  post "/language_chapter_blockable_options/:language_chapter_blockable_option_id/bolt_actions" => "language_chapter_blockable_option_bolt_actions#create"
   patch "/language_chapter_blockable_prompt_rules/:id" => "language_chapter_blockable_prompt_rules#update"
   delete "/language_chapter_blockable_prompt_rules/:id" => "language_chapter_blockable_prompt_rules#destroy"
+  patch "/language_chapter_blockable_option_bolt_actions/:id" => "language_chapter_blockable_option_bolt_actions#update"
+  delete "/language_chapter_blockable_option_bolt_actions/:id" => "language_chapter_blockable_option_bolt_actions#destroy"
   post "/wizard/extract_manga_text" => "wizard#extract_manga_text"
   post "/wizard/translate_text" => "wizard#translate_text"
   post "/wizard/apply_instruction" => "wizard#apply_instruction"

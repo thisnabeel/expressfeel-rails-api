@@ -443,7 +443,7 @@ class ChaptersController < ApplicationController
 
   def chapter_images_json
     @chapter.chapter_images
-      .includes(chapter_image_overlays: [:sub_layer_items, { chapter_image_overlay_blocks: :blockable }])
+      .includes(chapter_image_overlays: [:sub_layer_items, { chapter_image_overlay_item_blocks: [:blockable, :chapter_image_overlay_item_block_fields] }])
       .order(:position, :id)
       .map do |img|
         overlays = img.chapter_image_overlays.sort_by { |o| [o.position || 0, o.id || 0] }

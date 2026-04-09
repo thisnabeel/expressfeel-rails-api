@@ -8,7 +8,10 @@ class ChapterImageOverlaysController < ApplicationController
 
   def index
     overlays = @chapter_image.chapter_image_overlays
-      .includes(sub_layer_items: :language_chapter_sublayer, chapter_image_overlay_blocks: :blockable)
+      .includes(
+        sub_layer_items: :language_chapter_sublayer,
+        chapter_image_overlay_item_blocks: [:blockable, :chapter_image_overlay_item_block_fields]
+      )
       .order(:position, :id)
     render json: { overlays: overlays.map { |o| serialize_overlay(o) } }
   end
@@ -24,7 +27,7 @@ class ChapterImageOverlaysController < ApplicationController
     )
     overlay = ChapterImageOverlay.includes(
       sub_layer_items: :language_chapter_sublayer,
-      chapter_image_overlay_blocks: :blockable
+      chapter_image_overlay_item_blocks: [:blockable, :chapter_image_overlay_item_block_fields]
     ).find(overlay.id)
     render json: { overlay: serialize_overlay(overlay) }, status: :created
   end
@@ -33,7 +36,7 @@ class ChapterImageOverlaysController < ApplicationController
     @overlay.update!(overlay_params)
     @overlay = ChapterImageOverlay.includes(
       sub_layer_items: :language_chapter_sublayer,
-      chapter_image_overlay_blocks: :blockable
+      chapter_image_overlay_item_blocks: [:blockable, :chapter_image_overlay_item_block_fields]
     ).find(@overlay.id)
     render json: { overlay: serialize_overlay(@overlay) }
   end
@@ -125,19 +128,13 @@ class ChapterImageOverlaysController < ApplicationController
       details = deep_scrub_overlay_wizard_jsonb(details)
 
       begin
-        ChapterImageOverlayBlock.transaction do
-          @overlay.chapter_image_overlay_blocks.where(blockable_type: "LanguageChapterBlockableSet", blockable_id: set.id).delete_all
-          @overlay.chapter_image_overlay_blocks.create!(
-            blockable: set,
-            position: set.position || set.id,
-            details: details
-          )
+        ActiveRecord::Base.transaction do
+          BlockWizardBlockItemsSync.replace_overlay_strip!(@overlay, set, details)
         end
 
         @overlay.reload
-        @overlay = ChapterImageOverlay.includes(chapter_image_overlay_blocks: :blockable).find(@overlay.id)
         return render json: {
-          chapter_layer_blocks: @overlay.chapter_image_overlay_blocks.order(:position, :id).map(&:as_json_for_chapter),
+          chapter_layer_blocks: ChapterBlockableStripJson.overlay_strips(@overlay),
           items: result[:items],
           wizard_attempts: attempt_index + 1,
           attempt_errors: attempt_errors.presence

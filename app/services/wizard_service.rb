@@ -12,11 +12,17 @@ class WizardService
       content += "\n\nRespond **only** in valid GitHub-flavored Markdown."
     end
 
+    temperature =
+      case response_format
+      when "json_object" then 0.2
+      else 0.7
+      end
+
     response = client.chat(
       parameters: {
         model: "gpt-4o",
         messages: [{ role: "user", content: content }],
-        temperature: 0.7,
+        temperature: temperature,
         response_format: { type: response_format }
       }
     )

@@ -64,6 +64,14 @@ class BlockableSetWizardPromptBuilder
       out
     end
 
+    # JSON field name (option row key) => { display:, position: } for block item rows.
+    def option_metadata_by_key_for_set(set:)
+      set = ensure_associations_loaded(set)
+      option_key_rows(set).index_by { |r| r[:key] }.transform_values do |r|
+        { display: r[:option].display, position: r[:option].position }
+      end
+    end
+
     private
 
     def ensure_associations_loaded(set)

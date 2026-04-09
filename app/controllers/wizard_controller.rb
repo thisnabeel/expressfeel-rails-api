@@ -178,7 +178,8 @@ class WizardController < ApplicationController
   # - language_chapter_blockable_set_id: Integer
   # - row_index: Integer
   # - field_key: String
-  # - instruction: String (free-form; comes from the bolt menu input)
+  # - instruction: String (free-form; bolt menu “Manual” mode), OR
+  # - language_chapter_blockable_option_bolt_action_id: Integer (preset prompt for that option)
   #
   # returns: { ok: true, value: String, row_index: Integer, field_key: String }
   def block_tile_remix
@@ -187,19 +188,37 @@ class WizardController < ApplicationController
     set_id = params.require(:language_chapter_blockable_set_id)
     row_index = params.require(:row_index).to_i
     field_key = params.require(:field_key).to_s.strip
+    bolt_action_id = params[:language_chapter_blockable_option_bolt_action_id]
     instruction = params[:instruction].to_s.strip
 
     if field_key.blank?
       return render json: { error: "field_key is required" }, status: :unprocessable_entity
     end
+
+    set = LanguageChapterBlockableSet.find(set_id)
+
+    if bolt_action_id.present?
+      action = LanguageChapterBlockableOptionBoltAction.find_by(id: bolt_action_id)
+      unless action
+        return render json: { error: "Bolt action not found" }, status: :not_found
+      end
+      option = action.language_chapter_blockable_option
+      unless option.language_chapter_blockable_set_id == set.id
+        return render json: { error: "Invalid bolt action for this block set" }, status: :unprocessable_entity
+      end
+      row_keys = set.option_row_keys_by_option_id
+      unless row_keys[option.id].to_s == field_key
+        return render json: { error: "Bolt action does not match selected field" }, status: :unprocessable_entity
+      end
+      instruction = action.prompt.to_s.strip
+    end
+
     if instruction.blank?
       return render json: { error: "instruction is required" }, status: :unprocessable_entity
     end
     if instruction.length > 8000
       return render json: { error: "instruction is too long (max 8000 characters)" }, status: :unprocessable_entity
     end
-
-    set = LanguageChapterBlockableSet.find(set_id)
 
     row_hash, current_value, chapter_language_id =
       BlockTileRemixFetcher.fetch!(

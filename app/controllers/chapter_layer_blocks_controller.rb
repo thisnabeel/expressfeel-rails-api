@@ -11,7 +11,7 @@ class ChapterLayerBlocksController < ApplicationController
     set_id = params[:language_chapter_blockable_set_id].presence
 
     if set_id.blank?
-      @item.chapter_layer_blocks.destroy_all
+      @item.chapter_layer_item_blocks.destroy_all
       return render json: { chapter_layer_blocks: chapter_layer_blocks_json_for(@item.reload) }
     end
 
@@ -22,14 +22,19 @@ class ChapterLayerBlocksController < ApplicationController
     end
 
     incoming = extract_details_from_params
-    block = @item.chapter_layer_blocks.find_or_initialize_by(blockable: set)
-    block.position = set.position || set.id
     if incoming.present?
-      block.details = incoming
-    elsif block.new_record?
-      block.details = {}
+      BlockWizardBlockItemsSync.replace_layer_strip!(@item, set, incoming)
+    elsif @item.chapter_layer_item_blocks.where(
+      blockable_type: BlockWizardBlockItemsSync::SET_TYPE,
+      blockable_id: set.id
+    ).none?
+      pos = (@item.chapter_layer_item_blocks.maximum(:position) || 0) + 1
+      @item.chapter_layer_item_blocks.create!(
+        blockable: set,
+        position: pos,
+        details: {}
+      )
     end
-    block.save!
 
     render json: { chapter_layer_blocks: chapter_layer_blocks_json_for(@item.reload) }, status: :created
   rescue ActiveRecord::RecordNotFound
@@ -41,10 +46,7 @@ class ChapterLayerBlocksController < ApplicationController
   private
 
   def chapter_layer_blocks_json_for(item)
-    item.chapter_layer_blocks
-      .includes(:blockable)
-      .order(:position, :id)
-      .map(&:as_json_for_chapter)
+    ChapterBlockableStripJson.layer_item_strips(item.reload)
   end
 
   def set_item

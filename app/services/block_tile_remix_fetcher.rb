@@ -11,18 +11,18 @@ class BlockTileRemixFetcher
         raise UserError, "Chapter not found" if chapter.blank?
         raise UserError, "Blockable set belongs to a different language" if set.language_id != chapter.language_id
 
-        blk = item.chapter_layer_blocks.find_by(blockable: set)
-        raise UserError, "No block exists for this set on this item" if blk.blank?
-        extract_row!(blk.details, row_index, field_key).then { |row, val| [row, val, chapter.language_id] }
+        physical = physical_block_for_layer_item(item, set, row_index)
+        raise UserError, "No block exists for this set on this item" if physical.blank?
+        extract_row_from_physical!(physical, field_key).then { |row, val| [row, val, chapter.language_id] }
       when "chapter_image_overlay"
         overlay = ChapterImageOverlay.find(context_id)
         chapter = overlay.chapter_image&.chapter
         raise UserError, "Chapter not found" if chapter.blank?
         raise UserError, "Blockable set belongs to a different language" if set.language_id != chapter.language_id
 
-        blk = overlay.chapter_image_overlay_blocks.find_by(blockable: set)
-        raise UserError, "No block exists for this set on this overlay" if blk.blank?
-        extract_row!(blk.details, row_index, field_key).then { |row, val| [row, val, chapter.language_id] }
+        physical = physical_block_for_overlay(overlay, set, row_index)
+        raise UserError, "No block exists for this set on this overlay" if physical.blank?
+        extract_row_from_physical!(physical, field_key).then { |row, val| [row, val, chapter.language_id] }
       else
         raise UserError, "Unknown context_type"
       end
@@ -30,16 +30,32 @@ class BlockTileRemixFetcher
 
     private
 
-    def extract_row!(details, row_index, field_key)
-      d = details.is_a?(Hash) ? details : {}
-      items = d["items"]
-      raise UserError, "Block has no items array" unless items.is_a?(Array)
-      raise UserError, "row_index out of range" if row_index < 0 || row_index >= items.length
-      row = items[row_index]
+    def physical_block_for_layer_item(item, set, row_index)
+      blocks = item.chapter_layer_item_blocks
+        .where(blockable_type: set.class.name, blockable_id: set.id)
+        .order(:position, :id)
+        .to_a
+      return if row_index.negative? || row_index >= blocks.size
+
+      blocks[row_index]
+    end
+
+    def physical_block_for_overlay(overlay, set, row_index)
+      blocks = overlay.chapter_image_overlay_item_blocks
+        .where(blockable_type: set.class.name, blockable_id: set.id)
+        .order(:position, :id)
+        .to_a
+      return if row_index.negative? || row_index >= blocks.size
+
+      blocks[row_index]
+    end
+
+    def extract_row_from_physical!(physical, field_key)
+      row = ChapterBlockableStripJson.row_hash_for_physical_block(physical)
       raise UserError, "Row is not an object" unless row.is_a?(Hash)
       raise UserError, "field_key not found on row" unless row.key?(field_key)
+
       [row, row[field_key].to_s]
     end
   end
 end
-

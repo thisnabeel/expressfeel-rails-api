@@ -1,7 +1,7 @@
 class ChapterLayerItem < ApplicationRecord
   belongs_to :chapter_layer
   has_many :sub_layer_items, as: :sublayer_itemable, dependent: :destroy
-  has_many :chapter_layer_blocks, dependent: :destroy
+  has_many :chapter_layer_item_blocks, dependent: :destroy
 
   STYLES = %w[inline header block quote bullet ordered line_break hr].freeze
 
@@ -19,13 +19,14 @@ class ChapterLayerItem < ApplicationRecord
     )
   end
 
-  # When parent scope uses .includes(chapter_layer_blocks: :blockable), use memory only — do not
+  # When parent scope uses .includes(chapter_layer_item_blocks: [:blockable, :chapter_layer_item_block_fields]), use memory only — do not
   # chain .order on the association (that bypasses the preload and causes one SQL query per item).
   def chapter_layer_blocks_as_json
-    if association(:chapter_layer_blocks).loaded?
-      chapter_layer_blocks.sort_by { |b| [b.position || 0, b.id || 0] }.map(&:as_json_for_chapter)
+    if association(:chapter_layer_item_blocks).loaded?
+      blocks = chapter_layer_item_blocks.sort_by { |b| [b.position || 0, b.id || 0] }
+      ChapterBlockableStripJson.from_ordered_blocks(blocks)
     else
-      chapter_layer_blocks.order(:position, :id).includes(:blockable).map(&:as_json_for_chapter)
+      ChapterBlockableStripJson.layer_item_strips(self)
     end
   end
 

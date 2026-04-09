@@ -180,18 +180,13 @@ class ChapterLayerItemsController < ApplicationController
       details = deep_scrub_value_for_postgres_jsonb(details)
 
       begin
-        ChapterLayerBlock.transaction do
-          @item.chapter_layer_blocks.where(blockable_type: "LanguageChapterBlockableSet", blockable_id: set.id).delete_all
-          @item.chapter_layer_blocks.create!(
-            blockable: set,
-            position: set.position || set.id,
-            details: details
-          )
+        ActiveRecord::Base.transaction do
+          BlockWizardBlockItemsSync.replace_layer_strip!(@item, set, details)
         end
 
         @item.reload
         return render json: {
-          chapter_layer_blocks: @item.chapter_layer_blocks.includes(:blockable).order(:position, :id).map(&:as_json_for_chapter),
+          chapter_layer_blocks: ChapterBlockableStripJson.layer_item_strips(@item),
           items: result[:items],
           wizard_attempts: attempt_index + 1,
           attempt_errors: attempt_errors.presence

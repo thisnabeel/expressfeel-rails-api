@@ -6,7 +6,10 @@ class LanguageChapterBlockableOptionsController < ApplicationController
   before_action :authenticate_api_admin!
 
   def index
-    options = @blockable_set.language_chapter_blockable_options.ordered.includes(:language_chapter_blockable_prompt_rules)
+    options = @blockable_set.language_chapter_blockable_options.ordered.includes(
+      :language_chapter_blockable_prompt_rules,
+      :language_chapter_blockable_option_bolt_actions
+    )
     render json: {
       language_chapter_blockable_options: options.map { |o| serialize_option(o) }
     }
@@ -58,6 +61,9 @@ class LanguageChapterBlockableOptionsController < ApplicationController
       position: o.position,
       prompt_rules: o.language_chapter_blockable_prompt_rules.ordered.map { |r|
         { id: r.id, body: r.body, position: r.position }
+      },
+      bolt_actions: o.language_chapter_blockable_option_bolt_actions.map { |a|
+        { id: a.id, prompt: a.prompt, position: a.position }
       }
     }
   end

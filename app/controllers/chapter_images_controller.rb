@@ -82,7 +82,7 @@ class ChapterImagesController < ApplicationController
     ids = created.map(&:id)
     loaded = ChapterImageOverlay.where(id: ids).includes(
       sub_layer_items: :language_chapter_sublayer,
-      chapter_image_overlay_blocks: :blockable
+      chapter_image_overlay_item_blocks: [:blockable, :chapter_image_overlay_item_block_fields]
     )
     render json: {
       count: created.length,
