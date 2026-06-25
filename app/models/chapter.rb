@@ -74,6 +74,8 @@ class Chapter < ApplicationRecord
           chapter_id: ch.chapter_id,
           position: ch.position,
           language_id: ch.language_id,
+          video_url: ch.video_url,
+          video_enabled: ch.video_enabled,
           default_layer_id: default_layer_id,
           default_layer_items_count: items_count,
           default_layer_items_insufficient: !skip_small_chapter_warnings && items_count <= 1,
