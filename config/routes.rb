@@ -161,6 +161,8 @@ Rails.application.routes.draw do
       post :move
       post :split_single_item
       get :bubbles_zip
+      post :upload_video
+      delete :destroy_video
     end
   end
   get "/chapters/:chapter_id/chapter_images" => "chapter_images#index"

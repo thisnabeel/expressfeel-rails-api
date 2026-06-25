@@ -15,8 +15,41 @@ class Chapter < ApplicationRecord
   after_create :create_default_layer_named_name
   after_commit :renumber_affected_families, on: [:create, :update]
   after_destroy_commit :renumber_former_siblings
+  before_destroy :delete_video_from_s3
 
   scope :roots, -> { where(chapter_id: nil) }
+
+  def delete_video_from_s3
+    return if video_url.blank?
+
+    ImageUploaderService.new.delete_public_url(video_url)
+  end
+
+  def replace_video!(url:, original_filename: nil)
+    self.class.reset_column_information
+    reload if persisted?
+    delete_video_from_s3 if video_url.present?
+    update_columns(
+      video_url: url,
+      video_original_filename: original_filename,
+      video_enabled: true,
+      updated_at: Time.current
+    )
+    reload
+  end
+
+  def clear_video!
+    self.class.reset_column_information
+    reload if persisted?
+    delete_video_from_s3 if video_url.present?
+    update_columns(
+      video_url: nil,
+      video_original_filename: nil,
+      video_enabled: false,
+      updated_at: Time.current
+    )
+    reload
+  end
 
   def self.tree_for_language(language_id)
     rows = where(language_id: language_id).order(:position).includes(:chapter_layers).to_a

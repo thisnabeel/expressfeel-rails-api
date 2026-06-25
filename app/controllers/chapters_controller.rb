@@ -10,8 +10,8 @@ class ChaptersController < ApplicationController
   MAX_BULK_CHAPTER_IDS = 500
 
   before_action :set_language, only: [:for_language, :create, :bulk_update, :wizard_movie_summary]
-  before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item, :bubbles_zip]
-  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :bulk_update, :move, :split_single_item, :wizard_movie_summary, :bubbles_zip]
+  before_action :set_chapter, only: [:show, :update, :destroy, :move, :split_single_item, :bubbles_zip, :upload_video, :destroy_video]
+  before_action :authenticate_api_admin!, only: [:create, :update, :destroy, :bulk_update, :move, :split_single_item, :wizard_movie_summary, :bubbles_zip, :upload_video, :destroy_video]
 
   def for_language
     render json: { chapters: Chapter.tree_for_language(@language.id) }
@@ -93,7 +93,7 @@ class ChaptersController < ApplicationController
     chapter_images = chapter_images_json
 
     render json: {
-      chapter: @chapter.as_json(only: %i[id title description chapter_mode tier hidden coming_soon chapter_id position language_id]),
+      chapter: @chapter.as_json(only: %i[id title description chapter_mode tier hidden coming_soon chapter_id position language_id video_url video_original_filename video_enabled]),
       chapter_images: chapter_images,
       language: {
         id: @chapter.language_id,
@@ -118,6 +118,28 @@ class ChaptersController < ApplicationController
   def destroy
     @chapter.destroy!
     head :no_content
+  end
+
+  def upload_video
+    file = params[:file]
+    return render json: { error: "No file provided" }, status: :unprocessable_entity if file.blank?
+
+    content_type = Marcel::MimeType.for(file.tempfile)
+    unless content_type.to_s.start_with?("video/")
+      return render json: { error: "File must be a video" }, status: :unprocessable_entity
+    end
+
+    uploader = ImageUploaderService.new
+    key = "chapters/#{@chapter.id}/video/#{SecureRandom.uuid}"
+    video_url = uploader.upload_aws(key, file.tempfile)
+    @chapter.replace_video!(url: video_url, original_filename: file.original_filename)
+
+    render json: { chapter: chapter_video_json }
+  end
+
+  def destroy_video
+    @chapter.clear_video!
+    render json: { chapter: chapter_video_json }
   end
 
   # POST /chapters/:id/move — body: { delta: -1 | 1 } to swap with previous/next sibling
@@ -437,8 +459,12 @@ class ChaptersController < ApplicationController
     @chapter = Chapter.find(params[:id])
   end
 
+  def chapter_video_json
+    @chapter.reload.as_json(only: %i[id video_url video_original_filename video_enabled])
+  end
+
   def chapter_params
-    params.require(:chapter).permit(:title, :description, :chapter_mode, :tier, :hidden, :coming_soon, :chapter_id, :position)
+    params.require(:chapter).permit(:title, :description, :chapter_mode, :tier, :hidden, :coming_soon, :chapter_id, :position, :video_enabled)
   end
 
   def chapter_images_json

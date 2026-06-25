@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_04_10_180000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_25_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -221,6 +221,9 @@ ActiveRecord::Schema[7.1].define(version: 2026_04_10_180000) do
     t.string "tier", default: "Premium", null: false
     t.boolean "hidden", default: true, null: false
     t.boolean "coming_soon", default: true, null: false
+    t.string "video_url"
+    t.string "video_original_filename"
+    t.boolean "video_enabled", default: false, null: false
     t.index ["chapter_id"], name: "index_chapters_on_chapter_id"
     t.index ["language_id", "chapter_id", "position"], name: "index_chapters_on_language_id_and_chapter_id_and_position"
     t.index ["language_id"], name: "index_chapters_on_language_id"
