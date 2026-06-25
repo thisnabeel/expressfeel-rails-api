@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_06_25_130000) do
+ActiveRecord::Schema[7.1].define(version: 2026_06_25_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_stat_statements"
   enable_extension "pg_trgm"
@@ -495,6 +495,21 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_25_130000) do
     t.text "wizarding_instructions"
     t.index ["language_id", "position"], name: "index_lang_chapter_sublayers_on_lang_and_position"
     t.index ["language_id"], name: "index_language_chapter_sublayers_on_language_id"
+  end
+
+  create_table "language_config_variables", force: :cascade do |t|
+    t.bigint "language_id", null: false
+    t.bigint "config_variable_id"
+    t.string "name", null: false
+    t.text "value", default: "", null: false
+    t.string "field_type", default: "string", null: false
+    t.integer "position", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index "language_id, COALESCE(config_variable_id, (0)::bigint), name", name: "index_lcv_on_language_parent_name", unique: true
+    t.index ["config_variable_id"], name: "index_language_config_variables_on_config_variable_id"
+    t.index ["language_id", "config_variable_id", "position"], name: "index_lcv_on_language_parent_position"
+    t.index ["language_id"], name: "index_language_config_variables_on_language_id"
   end
 
   create_table "language_nouns", id: :serial, force: :cascade do |t|
@@ -1004,6 +1019,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_06_25_130000) do
   add_foreign_key "language_chapter_blockable_prompt_rules", "language_chapter_blockable_sets"
   add_foreign_key "language_chapter_blockable_sets", "languages"
   add_foreign_key "language_chapter_sublayers", "languages"
+  add_foreign_key "language_config_variables", "language_config_variables", column: "config_variable_id"
+  add_foreign_key "language_config_variables", "languages"
   add_foreign_key "language_traits", "languages"
   add_foreign_key "language_traits", "universals"
   add_foreign_key "layer_item_quiz_answers", "layer_quiz_questions"

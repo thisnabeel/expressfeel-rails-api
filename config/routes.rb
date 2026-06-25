@@ -125,6 +125,12 @@ Rails.application.routes.draw do
 
   get '/languages/:id/material_tag_options' => "languages#material_tag_options"
 
+  get "/languages/:language_id/config_variables" => "language_config_variables#index"
+  post "/languages/:language_id/config_variables" => "language_config_variables#create"
+  patch "/config_variables/:id" => "language_config_variables#update"
+  delete "/config_variables/:id" => "language_config_variables#destroy"
+  post "/config_variables/:id/move" => "language_config_variables#move"
+
   get "/languages/:language_id/chapters" => "chapters#for_language"
   post "/languages/:language_id/chapters" => "chapters#create"
   patch "/languages/:language_id/chapters/bulk" => "chapters#bulk_update"

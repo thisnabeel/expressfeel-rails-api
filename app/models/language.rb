@@ -36,6 +36,7 @@ class Language < ActiveRecord::Base
 
 	has_many :word_blocks, dependent: :destroy
 	has_many :chapters, dependent: :destroy
+	has_many :language_config_variables, dependent: :destroy
 	has_many :language_chapter_sublayers, dependent: :destroy
 	has_many :language_chapter_blockable_sets, dependent: :destroy
 
